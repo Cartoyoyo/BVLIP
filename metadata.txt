@@ -1,0 +1,43 @@
+[general]
+name=BVLIP
+qgisMinimumVersion=3.40
+qgisMaximumVersion=3.99
+description=FR: Delimitation automatique du bassin versant hydrographique en amont d'un point, a partir du RGE ALTI, avec metriques morphometriques et rapport cartographique.
+    EN: Automatic delineation of the upstream hydrographic watershed of a point, based on the French RGE ALTI DEM, with morphometric metrics and a map report.
+    ES: Delimitacion automatica de la cuenca hidrografica aguas arriba de un punto, a partir del MDT RGE ALTI, con metricas morfometricas e informe cartografico.
+    PT: Delimitacao automatica da bacia hidrografica a montante de um ponto, a partir do MDT RGE ALTI, com metricas morfometricas e relatorio cartografico.
+    DE: Automatische Abgrenzung des oberhalb eines Punktes gelegenen Einzugsgebiets auf Basis des RGE ALTI, mit morphometrischen Kennwerten und Kartenbericht.
+about=FR: BVLIP delimite le bassin versant topographique draine par un point choisi sur la carte. Le modele numerique de terrain RGE ALTI 5 m et le reseau hydrographique BD TOPO / BD TOPAGE sont telecharges automatiquement depuis la Geoplateforme IGN : aucune donnee n'est a preparer au prealable. Le plugin calcule ensuite les metriques du bassin (surface, perimetre, indice de Gravelius, rectangle equivalent, hypsometrie, pente moyenne, plus long cheminement hydraulique, densite de drainage, temps de concentration, occupation du sol) et produit un rapport A4 mis en page, un bassin par page.
+    EN: BVLIP delineates the topographic watershed drained by a point picked on the map. The RGE ALTI 5 m elevation model and the BD TOPO / BD TOPAGE hydrographic network are downloaded automatically from the French IGN Geoplateforme, so no data preparation is required. The plugin then computes the catchment metrics (area, perimeter, Gravelius index, equivalent rectangle, hypsometry, mean slope, longest flow path, drainage density, time of concentration, land cover) and produces a laid-out A4 report, one catchment per page.
+version=0.9.0
+author=Yoan Laloux
+email=y.laloux@vichy-communaute.fr
+homepage=https://github.com/Cartoyoyo/BVLIP
+tracker=https://github.com/Cartoyoyo/BVLIP/issues
+repository=https://github.com/Cartoyoyo/BVLIP
+license=GNU GPL v3
+icon=icons/icon.png
+experimental=True
+deprecated=False
+hasProcessingProvider=yes
+tags=hydrology,watershed,catchment,dem,france,ign,rge alti,bassin versant,hydrographie,morphometrie
+category=Vector
+changelog=0.9.0 - Les cours d'eau amont portent leur nom et leurs attributs BD TOPO ; etiquettes sur la carte, trait tirete pour les intermittents.
+    0.8.3 - README de presentation avec captures, controle de la longueur des intitules du rapport.
+    0.8.2 - Prepublication : telechargements par le gestionnaire reseau de QGIS (proxy pris en compte), enumerations Qt6 cadrees.
+    0.8.1 - Reperes d'exutoire qui ne s'accumulent plus, classeur Excel non coupe a l'impression, groupes de couches nommes.
+    0.8.0 - Recalage de l'exutoire sur le chevelu du MNT et controle que le bassin contient bien son reseau amont.
+    0.7.2 - Boutons de meme taille, etapes de calcul de retour dans le panneau.
+    0.7.1 - Panneau resserre sur le geste courant ; reglages, langue et A propos passent dans le menu de l'extension et sont conserves.
+    0.7.0 - Le calcul tourne en tache de fond : QGIS reste utilisable, avec un bouton Annuler.
+    0.6.1 - Economie de memoire : calcul recadre sur le bassin, pente sur disque, occupation du sol cumulee page par page, option d'affinage a la maille la plus fine.
+    0.6.0 - Les grands bassins passent : maille du MNT ajustee a la memoire disponible, calcul du cheminement deux fois plus leger.
+    0.5.4 - Panneau protege contre la destruction de ses widgets pendant un calcul, appels deprecies remplaces.
+    0.5.3 - Le classeur tient dans la feuille A4 et declare sa mise en page.
+    0.5.2 - Proposition d'ouvrir le dossier une fois le rapport ecrit.
+    0.5.1 - Le rapport sort en PDF et en classeur Excel mis en forme, avec l'image du bassin et les graphiques.
+    0.5.0 - Rapport A4 (PDF + HTML) avec carte masquee et graphiques, couches en memoire, intitules avec unites, bouton rapport.
+    0.4.0 - Algorithme Processing (traitement par lot), panneau branche sur la chaine reelle, pagination WFS, plus long cheminement vectorise.
+    0.3.0 - Caracteristiques du bassin : morphometrie, hypsometrie, pentes, plus long cheminement, temps de concentration, masse d'eau DCE, occupation du sol.
+    0.2.0 - Coeur de calcul : emprise par remontee du reseau BD TOPO, MNT RGE ALTI en BIL 32 bits, delimitation GRASS, ecriture GeoPackage.
+    0.1.0 - Squelette initial : chargement du plugin, panneau lateral, dialogue A propos, interface multilingue.
