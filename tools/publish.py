@@ -39,6 +39,13 @@ def read_version():
     raise SystemExit("Version absente de metadata.txt")
 
 
+def _scrub(text, secret):
+    """Efface le secret d'un message avant de l'afficher."""
+    if secret and secret in text:
+        text = text.replace(secret, "***")
+    return text
+
+
 def credentials():
     user = os.environ.get("OSGEO_USER")
     if not user:
@@ -94,7 +101,14 @@ def main():
         )
     except xmlrpc.client.Fault as error:
         raise SystemExit("Le depot a refuse l'archive : {0}".format(
-            error.faultString))
+            _scrub(error.faultString, password)))
+    except Exception as error:
+        # Le mot de passe fait partie de l'URL du service : le message d'une
+        # exception inattendue le contiendrait en clair, et se retrouverait
+        # dans un journal ou une capture d'ecran. On l'efface avant d'ecrire
+        # quoi que ce soit.
+        raise SystemExit("Envoi impossible : {0}".format(
+            _scrub("{0}: {1}".format(type(error).__name__, error), password)))
     print("Envoi accepte : {0}".format(result))
     print("Premiere soumission : le plugin attend la validation d'un "
           "moderateur.")
