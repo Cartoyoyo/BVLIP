@@ -309,6 +309,10 @@ python tools/check_fields.py    # unités, unicité, longueur des intitulés
 python tools/build_zip.py       # archive prête pour plugins.qgis.org
 ```
 
+Le dépôt sur plugins.qgis.org se fait ensuite par `tools/publish.py`, qui lit
+les identifiants OSGeo dans l'environnement ou les demande au clavier — jamais
+en argument de ligne de commande, où ils resteraient dans l'historique du shell.
+
 ## Changelog
 
 Le détail complet, avec les mesures qui ont motivé chaque correction, est dans [`CHANGELOG.md`](CHANGELOG.md).
