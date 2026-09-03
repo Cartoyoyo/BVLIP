@@ -3,6 +3,20 @@
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le
 plugin la [gestion sémantique de version](https://semver.org/lang/fr/).
 
+## [0.9.1] - 2026-09-03
+
+### Modifie
+
+- **Nouveau logo.** Le dessin montre d'un coup d'oeil ce que fait l'extension :
+  la ligne de partage des eaux ferme le bassin, le chevelu s'y ramifie, et le
+  point orange marque l'exutoire â€” le point que l'utilisateur clique.
+
+  Il remplace l'icone provisoire, dessinee au trait dans le code. La source est
+  desormais un unique `icons/bvlip.svg` ; `tools/make_icons.py` en tire les deux
+  PNG dont QGIS et GitHub ont besoin, en 96 px pour la barre d'outils et en
+  320 px pour la fenetre A propos et l'en-tete du README. Un seul fichier a
+  reprendre quand le dessin change, au lieu de deux images a garder en accord.
+
 ## [0.9.0] — 2026-09-03
 
 ### Ajouté

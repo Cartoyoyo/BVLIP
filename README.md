@@ -7,7 +7,7 @@
 **Cliquez un point sur un cours d'eau : le bassin versant qui l'alimente est délimité, caractérisé et mis en rapport — sans préparer la moindre donnée.**
 
 [![QGIS](https://img.shields.io/badge/QGIS-3.40%2B-green?logo=qgis&logoColor=white)](https://qgis.org)
-[![Version](https://img.shields.io/badge/version-0.9.0-blue)](metadata.txt)
+[![Version](https://img.shields.io/badge/version-0.9.1-blue)](metadata.txt)
 [![License](https://img.shields.io/badge/license-GPL%20v3-orange)](LICENSE)
 [![Données](https://img.shields.io/badge/données-IGN%20%7C%20Sandre-informational)](https://geoservices.ign.fr)
 [![Interface](https://img.shields.io/badge/interface-FR%20%7C%20EN%20%7C%20ES%20%7C%20PT%20%7C%20DE-lightgrey)](i18n/__init__.py)
@@ -25,10 +25,10 @@
 | ![Panneau](screenshot/02_panneau.png) | ![Carte](screenshot/01_carte.png) | ![Rapport](screenshot/03_rapport.png) |
 | Un point sur la carte,<br>et le calcul part en tâche de fond | Le bassin, son chevelu<br>et les quatre états de l'exutoire | Une page A4 par bassin,<br>en PDF et en classeur Excel |
 
-| Réglages |
-|:---:|
-| ![Réglages](screenshot/04_reglages.png) |
-| Accrochage de l'exutoire,<br>dans le menu de l'extension |
+| Réglages | À propos |
+|:---:|:---:|
+| ![Réglages](screenshot/04_reglages.png) | ![À propos](screenshot/05_apropos.png) |
+| Accrochage de l'exutoire,<br>dans le menu de l'extension | Version, licence et dépôt,<br>dans le menu de l'extension |
 
 </div>
 
@@ -319,6 +319,7 @@ Le détail complet, avec les mesures qui ont motivé chaque correction, est dans
 
 | Version | Notes |
 |---------|-------|
+| **0.9.1** | Nouveau logo : ligne de partage, chevelu et exutoire |
 | **0.9.0** | Cours d'eau amont nommés et étiquetés — trait tireté pour les écoulements intermittents |
 | **0.8.3** | README de présentation avec captures — contrôle de la longueur des intitulés |
 | **0.8.2** | Téléchargements par le gestionnaire réseau de QGIS, proxy pris en compte — 43 énumérations Qt6 cadrées — outils de prépublication |
