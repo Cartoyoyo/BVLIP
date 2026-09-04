@@ -9,7 +9,7 @@ description=FR: Delimitation automatique du bassin versant hydrographique en amo
     DE: Automatische Abgrenzung des oberhalb eines Punktes gelegenen Einzugsgebiets auf Basis des RGE ALTI, mit morphometrischen Kennwerten und Kartenbericht.
 about=FR: BVLIP delimite le bassin versant topographique draine par un point choisi sur la carte. Le modele numerique de terrain RGE ALTI 5 m et le reseau hydrographique BD TOPO / BD TOPAGE sont telecharges automatiquement depuis la Geoplateforme IGN : aucune donnee n'est a preparer au prealable. Le plugin calcule ensuite les metriques du bassin (surface, perimetre, indice de Gravelius, rectangle equivalent, hypsometrie, pente moyenne, plus long cheminement hydraulique, densite de drainage, temps de concentration, occupation du sol) et produit un rapport A4 mis en page, un bassin par page.
     EN: BVLIP delineates the topographic watershed drained by a point picked on the map. The RGE ALTI 5 m elevation model and the BD TOPO / BD TOPAGE hydrographic network are downloaded automatically from the French IGN Geoplateforme, so no data preparation is required. The plugin then computes the catchment metrics (area, perimeter, Gravelius index, equivalent rectangle, hypsometry, mean slope, longest flow path, drainage density, time of concentration, land cover) and produces a laid-out A4 report, one catchment per page.
-version=0.9.1
+version=0.9.2
 author=Yoan Laloux
 email=y.laloux@vichy-communaute.fr
 homepage=https://github.com/Cartoyoyo/BVLIP
@@ -22,7 +22,8 @@ deprecated=False
 hasProcessingProvider=yes
 tags=hydrology,watershed,catchment,dem,france,ign,rge alti,bassin versant,hydrographie,morphometrie
 category=Vector
-changelog=0.9.1 - Nouveau logo : ligne de partage, chevelu et exutoire, rendu depuis un SVG unique.
+changelog=0.9.2 - Le chevelu amont se charge par dalles le long des cours d'eau ; les bassins hors gabarit sont refuses plutot que rendus tronques, avec reprise du calcul sur accord ; les canaux ne sont plus remontes ; les altitudes aberrantes du MNT sont reparees.
+    0.9.1 - Nouveau logo : ligne de partage, chevelu et exutoire, rendu depuis un SVG unique.
     0.9.0 - Les cours d'eau amont portent leur nom et leurs attributs BD TOPO ; etiquettes sur la carte, trait tirete pour les intermittents.
     0.8.3 - README de presentation avec captures, controle de la longueur des intitules du rapport.
     0.8.2 - Prepublication : telechargements par le gestionnaire reseau de QGIS (proxy pris en compte), enumerations Qt6 cadrees.

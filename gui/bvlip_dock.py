@@ -27,7 +27,7 @@ import os
 import time
 
 from qgis.PyQt import sip
-from qgis.PyQt.QtCore import Qt, QUrl
+from qgis.PyQt.QtCore import Qt, QTimer, QUrl
 from qgis.PyQt.QtGui import QDesktopServices, QFont
 from qgis.PyQt.QtWidgets import (
     QApplication, QCheckBox, QDockWidget, QFileDialog, QGridLayout, QGroupBox,
@@ -35,6 +35,7 @@ from qgis.PyQt.QtWidgets import (
     QVBoxLayout, QWidget,
 )
 
+from ..core.network import SEED_FEATURE_MAX, OversizeBasinError
 from ..i18n import tr
 from . import settings
 from .outlet_map_tool import OutletMapTool
@@ -84,6 +85,15 @@ class BvlipDock(QDockWidget):
         self._task = None        # tache de fond en cours, le cas echeant
         self._started = 0.0
         self._click_of_run = None
+        # Demande de calcul integral : posee par la boite de dialogue
+        # du bassin hors gabarit, consommee par le lancement suivant
+        # et jamais conservee. Un exutoire different repart du
+        # garde-fou : l'accord donne une fois ne vaut pas pour la
+        # suite.
+        self._allow_oversize = False
+        # Chevelu deja charge par un calcul refuse, a poursuivre. Il est lie
+        # a un exutoire : changer de point l'invalide.
+        self._resume = None
 
         self.map_tool = OutletMapTool(self.canvas)
         self.map_tool.outlet_picked.connect(self._on_outlet_picked)
@@ -189,6 +199,15 @@ class BvlipDock(QDockWidget):
         self.log_area = QTextEdit()
         self.log_area.setReadOnly(True)
         self.log_area.setFixedHeight(150)
+        # Chasse fixe : les horodatages ne forment une colonne lisible que si
+        # tous les chiffres ont la meme largeur. Avec une police
+        # proportionnelle, la colonne ondule et l'oeil ne peut plus comparer
+        # deux lignes d'un coup.
+        mono = QFont(self.log_area.font())
+        mono.setFamilies(["Consolas", "DejaVu Sans Mono", "Courier New",
+                          "monospace"])
+        mono.setFixedPitch(True)
+        self.log_area.setFont(mono)
         layout.addWidget(self.log_area)
 
         layout.addStretch()
@@ -238,6 +257,10 @@ class BvlipDock(QDockWidget):
         self.btn_pick.setChecked(False)
 
     def _on_outlet_picked(self, x, y):
+        # Un autre exutoire invalide ce qui avait ete charge pour le
+        # precedent : le chevelu amont n'est pas le meme.
+        self._resume = None
+        self._allow_oversize = False
         self.outlet = (x, y)
         self._refresh_outlet_label()
         self.btn_pick.setChecked(False)
@@ -272,13 +295,39 @@ class BvlipDock(QDockWidget):
             return False
 
     def _status(self, text):
-        if self._alive(self.lbl_status):
-            self.lbl_status.setText(text)
+        """Pose le statut, ramene a sa premiere ligne.
+
+        L'etiquette tient sur deux ou trois lignes dans un panneau etroit :
+        un message multi-ligne la fait grandir jusqu'a chasser le journal
+        hors de l'ecran. Le detail, lui, reste dans le journal juste dessous.
+        """
+        if not self._alive(self.lbl_status):
+            return
+        lines = str(text).strip().splitlines()
+        self.lbl_status.setText(lines[0] if lines else str(text))
+
+    def _stamp(self):
+        """Prefixe horodate d'une ligne de journal.
+
+        L'heure dit quand l'etape a eu lieu, le compteur depuis combien de
+        temps le calcul tourne. C'est le second qui sert le plus : l'ecart
+        entre deux lignes montre d'un coup d'oeil ou le temps est passe, sans
+        avoir a soustraire des heures de tete.
+        """
+        clock = time.strftime("%H:%M:%S")
+        if self._started:
+            return "{0} {1:5.0f}s  ".format(clock, time.time() - self._started)
+        return "{0}          ".format(clock)
 
     def log(self, message):
         if not self._alive(self.log_area):
             return
-        self.log_area.append(message)
+        # Chaque ligne du message porte son propre horodatage : un resume qui
+        # tient sur six lignes ne doit pas paraitre instantane sur cinq
+        # d'entre elles.
+        stamp = self._stamp()
+        for line in str(message).splitlines() or [""]:
+            self.log_area.append(stamp + line)
         QApplication.processEvents()
 
     def set_controls_enabled(self, enabled):
@@ -312,7 +361,14 @@ class BvlipDock(QDockWidget):
         # declenchement peut venir d'ailleurs : raccourci, appel programme.
         if self._running:
             return
-        self.log_area.clear()
+
+        # Le journal n'est efface qu'au demarrage d'un calcul neuf. Sur une
+        # reprise, il porte tout ce qui a deja ete parcouru : l'effacer
+        # donnerait l'impression de repartir de zero alors que le chevelu
+        # deja charge est conserve.
+        resume = self._resume
+        if resume is None:
+            self.log_area.clear()
         if self.outlet is None:
             self.log(tr("err_no_outlet", self.lang))
             return
@@ -320,7 +376,14 @@ class BvlipDock(QDockWidget):
         # Les reglages viennent du menu de l'extension, pas du panneau : ils
         # sont relus a chaque lancement, donc une modification prend effet
         # sans rouvrir le panneau.
-        options = settings.pipeline_options()
+        options = settings.pipeline_options(
+            allow_oversize=self._allow_oversize
+        )
+        # L'accord de calcul integral et le chevelu deja charge se consomment
+        # ici : ils valent pour ce lancement et pour lui seul. La reprise a
+        # ete recuperee plus haut, avant l'effacement du journal.
+        self._allow_oversize = False
+        self._resume = None
 
         self.last_result = None
         self._running = True
@@ -328,10 +391,17 @@ class BvlipDock(QDockWidget):
         self._click_of_run = self.outlet
         self.progress.setMaximum(len(STEPS))
         self.progress.setValue(0)
-        self.log(tr("outlet_set", self.lang, x=self.outlet[0], y=self.outlet[1]))
+        if resume is None:
+            self.log(tr("outlet_set", self.lang,
+                        x=self.outlet[0], y=self.outlet[1]))
+        else:
+            self.log(tr("resuming", self.lang,
+                        dalles=len(resume.get("loaded") or ()),
+                        troncons=len(resume.get("network") or ())))
         self.log(tr("running_background", self.lang))
 
-        task = BvlipTask(self.outlet[0], self.outlet[1], options)
+        task = BvlipTask(self.outlet[0], self.outlet[1], options,
+                         resume=resume)
         task.set_step_count(len(STEPS))
         task.step.connect(self._on_step)
         task.finished_with.connect(self._on_finished)
@@ -360,6 +430,9 @@ class BvlipDock(QDockWidget):
         self._task = None
         self._running = False
         try:
+            if isinstance(error, OversizeBasinError):
+                self._ask_oversize(error)
+                return
             if error:
                 self.log(tr("done_error", self.lang, error=error))
                 self._status(tr("done_error", self.lang, error=error))
@@ -399,6 +472,10 @@ class BvlipDock(QDockWidget):
             self._status(tr("done_error", self.lang, error=exc))
         finally:
             self.set_controls_enabled(True)
+            # Le chrono s'arrete ici, et pas a l'entree de cette methode :
+            # les couches et le resume sont produits entre-temps, et ce
+            # travail-la fait partie du calcul.
+            self._started = 0.0
 
     def _on_step(self, index, message):
         """Retour d'avancement de la chaine de traitement."""
@@ -410,6 +487,60 @@ class BvlipDock(QDockWidget):
             label=message,
         ))
         self.log("  " + str(message))
+
+    def _ask_oversize(self, error):
+        """Bassin hors gabarit : annoncer, puis laisser le choix.
+
+        Le calcul s'est arrete parce que le bassin deborde du garde-fou, pas
+        parce qu'il aurait echoue. La difference compte : il n'y a rien a
+        reparer, il y a une decision a prendre, et elle n'appartient pas au
+        plugin. On montre donc ce qui a ete atteint, ce que couterait la
+        suite, et on laisse la main.
+
+        Le refus est le choix par defaut. Dans la grande majorite des cas,
+        un bassin qui deborde a 60 km signale un exutoire pose sur un fleuve
+        par megarde, et non une intention.
+        """
+        self.log(tr("oversize_log", self.lang,
+                    count=error.feature_count,
+                    budget=error.budget,
+                    upstream=error.upstream_count,
+                    lineaire_km=error.upstream_km))
+        self._status(tr("oversize_status", self.lang))
+        if self._alive(self.progress):
+            self.progress.setValue(0)
+
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Icon.Warning)
+        box.setWindowTitle(tr("oversize_title", self.lang))
+        box.setText(tr("oversize_text", self.lang,
+                       count=error.feature_count, budget=error.budget))
+        box.setInformativeText(tr(
+            "oversize_detail", self.lang,
+            upstream=error.upstream_count,
+            lineaire_km=error.upstream_km,
+            scale=error.scale,
+            zone=error.zone_name or tr("oversize_zone_unknown", self.lang),
+            max_count=SEED_FEATURE_MAX,
+        ))
+        go = box.addButton(tr("oversize_go", self.lang),
+                           QMessageBox.ButtonRole.DestructiveRole)
+        back = box.addButton(tr("oversize_back", self.lang),
+                             QMessageBox.ButtonRole.RejectRole)
+        box.setDefaultButton(back)
+        box.exec_()
+
+        if box.clickedButton() is go:
+            self._allow_oversize = True
+            # Le calcul repart de ce qui est deja charge, et non de zero :
+            # sur un grand bassin, la remontee du chevelu represente
+            # l'essentiel de l'attente.
+            self._resume = error.state
+            self.log(tr("oversize_accepted", self.lang))
+            # set_controls_enabled n'a pas encore ete rappele : le bloc
+            # finally de _on_finished s'en charge apres notre retour. On
+            # relance donc apres lui, et non d'ici.
+            QTimer.singleShot(0, self.run)
 
     # -------------------------------------------------------------- Rapport
 
@@ -432,6 +563,7 @@ class BvlipDock(QDockWidget):
             path += ".pdf"
 
         self._running = True
+        self._started = time.time()
         self.set_controls_enabled(False)
         if not charts.available():
             self.log(tr("no_charts", self.lang))
@@ -449,12 +581,21 @@ class BvlipDock(QDockWidget):
                 "report_done", self.lang,
                 path=os.path.basename(produced["pdf"]),
             ))
-            self._offer_to_open(produced)
+            # La proposition d'ouvrir le dossier est une politesse, posee
+            # apres coup sur des fichiers deja ecrits. Son echec ne dit rien
+            # du rapport et ne doit pas le faire passer pour rate : sans ce
+            # garde, un rapport complet s'affichait en "Echec" a cause d'une
+            # boite de dialogue.
+            try:
+                self._offer_to_open(produced)
+            except Exception as exc:      # noqa: BLE001 - simple confort
+                self.log(tr("warning", self.lang, message=exc))
         except Exception as exc:
             self.log(tr("done_error", self.lang, error=exc))
             self._status(tr("done_error", self.lang, error=exc))
         finally:
             self._running = False
+            self._started = 0.0
             self.set_controls_enabled(True)
 
     def _offer_to_open(self, produced):

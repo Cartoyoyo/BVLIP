@@ -14,6 +14,7 @@ from qgis.PyQt.QtWidgets import (
     QDialog, QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout,
 )
 
+from ..core.network import SEED_FEATURE_GUARD, SEED_FEATURE_MAX
 from ..i18n import tr
 
 PLUGIN_DIR = os.path.dirname(os.path.dirname(__file__))
@@ -104,6 +105,19 @@ class AboutDialog(QDialog):
                     )
                 )
             )
+
+        # Les seuils sont lus dans le module qui les applique, jamais
+        # recopies : une fiche qui annonce une limite differente de celle
+        # que le calcul oppose est pire que pas de fiche du tout.
+        limits = QLabel(tr("about_limits", lang,
+                           guard="{0:,}".format(SEED_FEATURE_GUARD).replace(",", " "),
+                           hard="{0:,}".format(SEED_FEATURE_MAX).replace(",", " ")))
+        limits.setWordWrap(True)
+        limits.setStyleSheet(
+            "color:#2c3e50;font-size:10px;background:#ecf0f1;"
+            "border-radius:4px;padding:8px"
+        )
+        layout.addWidget(limits)
 
         credit = QLabel(tr("data_credit", lang))
         credit.setAlignment(Qt.AlignmentFlag.AlignCenter)

@@ -234,7 +234,7 @@ def _fill_bottom(layout, values, charts_paths):
         if not rows:
             continue
         if y + 5 + 3.6 * len(rows) > A4_HEIGHT - 16:
-            break  # la page est pleine : le HTML porte le detail complet
+            break  # la page est pleine : le classeur porte le detail complet
         _label(layout, section, left, y, column_width, 4.5,
                size=8.0, bold=True)
         y += 5.0

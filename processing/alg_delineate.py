@@ -11,7 +11,6 @@ bassins et un message qu'un arret sec.
 """
 
 import os
-import tempfile
 
 from qgis.core import (
     QgsCoordinateTransform, QgsCoordinateReferenceSystem, QgsFeature,
@@ -43,6 +42,7 @@ class DelineateWatershedAlgorithm(QgsProcessingAlgorithm):
     WATER_BODY = "WATER_BODY"
     LAND_COVER = "LAND_COVER"
     REFINE = "REFINE"
+    OVERSIZE = "OVERSIZE"
     OUTPUT = "OUTPUT"
     OUTPUT_OUTLETS = "OUTPUT_OUTLETS"
 
@@ -82,6 +82,11 @@ class DelineateWatershedAlgorithm(QgsProcessingAlgorithm):
             "reglages sont determinants : un exutoire tombe a cote du talweg "
             "produit un bassin de quelques ares au lieu de plusieurs "
             "kilometres carres.\n\n"
+            "Un exutoire dont le bassin demanderait de charger plus de "
+            "80 000 troncons est refuse plutot que rendu tronque : un bassin coupe au bord de "
+            "l'emprise garde l'allure d'un bassin juste et rien en aval ne "
+            "sait plus qu'il est faux. Cochez alors l'option des bassins "
+            "hors gabarit, ou reprenez l'exutoire plus en amont.\n\n"
             "Ne fonctionne que sur le territoire francais couvert par le "
             "RGE ALTI."
         )
@@ -142,6 +147,12 @@ class DelineateWatershedAlgorithm(QgsProcessingAlgorithm):
                     "long, sans effet sur la surface)"),
             defaultValue=False,
         ))
+        self.addParameter(QgsProcessingParameterBoolean(
+            self.OVERSIZE,
+            self.tr("Autoriser les bassins hors gabarit (plus de 80 000 "
+                    "troncons : tres long, maille grossiere)"),
+            defaultValue=False,
+        ))
         self.addParameter(QgsProcessingParameterFeatureSink(
             self.OUTPUT, self.tr("Bassins versants"),
             QgsProcessing.TypeVectorPolygon,
@@ -174,6 +185,8 @@ class DelineateWatershedAlgorithm(QgsProcessingAlgorithm):
             with_water_body=self.parameterAsBool(parameters, self.WATER_BODY, context),
             with_land_cover=self.parameterAsBool(parameters, self.LAND_COVER, context),
             refine=self.parameterAsBool(parameters, self.REFINE, context),
+            allow_oversize=self.parameterAsBool(
+                parameters, self.OVERSIZE, context),
         )
 
         basin_fields = _fields(results.BASIN_FIELDS)
@@ -211,8 +224,10 @@ class DelineateWatershedAlgorithm(QgsProcessingAlgorithm):
                 self.tr("Exutoire {0} : {1:.1f} ; {2:.1f}").format(
                     label, point[0], point[1])
             )
-            options.workdir = tempfile.mkdtemp(prefix="bvlip_")
-
+            # Le repertoire de travail est laisse a la chaine, qui le cree
+            # et le detruit pour chaque exutoire. En le fabriquant ici, un lot
+            # de dix points laissait dix repertoires de plusieurs centaines de
+            # megaoctets derriere lui.
             try:
                 result = run_pipeline(
                     point[0], point[1], options,

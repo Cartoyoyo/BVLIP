@@ -11,9 +11,12 @@ un puits Processing.
 """
 
 import os
+import shutil
 import tempfile
+import time
 
 from . import dem, delineation, landcover, metrics, network, waterbody
+from .delineation import CONTAINMENT_MIN
 
 # Etapes annoncees a la barre de progression. La liste sert aussi de contrat :
 # une etape desactivee est comptee puis sautee, pour que l'avancement reste
@@ -42,6 +45,28 @@ REFINE_MARGIN = 50.0
 # Facteur d'elargissement quand le contour fin affleure le bord du recadrage.
 REFINE_MARGIN_GROWTH = 4.0
 
+# Prefixe des repertoires de travail. Il sert aussi au balayage des oublis :
+# tout ce qui le porte dans le temporaire du systeme nous appartient.
+WORKDIR_PREFIX = "bvlip_"
+
+# Age a partir duquel un repertoire de travail est repute abandonne. Aucun
+# calcul ne dure six heures ; au-dela, c'est une session qui s'est terminee
+# sans nettoyer - QGIS ferme brutalement, plugin recharge en cours de route.
+# Le delai protege les autres instances de QGIS ouvertes en meme temps, dont
+# on ne doit pas effacer le repertoire en cours d'utilisation.
+WORKDIR_MAX_AGE_HOURS = 6
+
+# Repertoires que le systeme n'a pas laisse effacer sur le coup.
+#
+# QGIS met en cache les connexions OGR : le GeoPackage de vectorisation reste
+# ouvert un moment apres la destruction de la couche qui l'a lu, et Windows
+# refuse alors d'effacer le fichier. Les gros fichiers - le MNT et les
+# rasters d'ecoulement, de cinquante a trois cents megaoctets - partent bien ;
+# il ne subsiste qu'un GeoPackage de deux cents kilooctets. On le reprend au
+# calcul suivant, quand la connexion a ete relachee, plutot que d'attendre le
+# balayage des six heures.
+_PENDING = set()
+
 
 class PipelineOptions:
     """Reglages du traitement, avec des valeurs par defaut utilisables telles
@@ -52,7 +77,8 @@ class PipelineOptions:
                  with_metrics=True, with_water_body=True,
                  with_land_cover=True, water_body_details=False,
                  max_pixels=None, refine=False,
-                 refine_margin=REFINE_MARGIN, workdir=None):
+                 refine_margin=REFINE_MARGIN, workdir=None,
+                 allow_oversize=False):
         self.snap_radius = snap_radius
         self.thalweg_radius = thalweg_radius
         # None : la maille s'ajuste a l'emprise et a la memoire disponible.
@@ -68,19 +94,93 @@ class PipelineOptions:
         self.with_land_cover = with_land_cover
         self.water_body_details = water_body_details
         self.workdir = workdir
+        # Leve le garde-fou d'emprise du reseau amont. Ne se met a True que
+        # sur demande explicite : voir network.OversizeBasinError.
+        self.allow_oversize = allow_oversize
 
 
-def run(x, y, options=None, progress=None, feedback=None, cancelled=None):
+def _discard(path):
+    """Efface un repertoire de travail, ou le note pour plus tard."""
+    shutil.rmtree(path, ignore_errors=True)
+    if os.path.isdir(path):
+        _PENDING.add(path)
+    else:
+        _PENDING.discard(path)
+
+
+def sweep_workdirs(max_age_hours=WORKDIR_MAX_AGE_HOURS):
+    """Efface les repertoires de travail abandonnes par des sessions passees.
+
+    Le nettoyage de fin de calcul suffit tant que tout se passe bien ; il ne
+    couvre pas la fermeture brutale de QGIS ni le rechargement du plugin en
+    cours de traitement. Sans ce balayage, les oublis s'accumulent
+    indefiniment - releve sur un poste : 116 repertoires et six gigaoctets,
+    jusqu'a saturer le disque et faire echouer les calculs sur des rasters
+    tronques, sans que rien ne relie la panne a sa cause.
+
+    Renvoie le nombre de repertoires effaces.
+    """
+    root = tempfile.gettempdir()
+    cutoff = time.time() - max_age_hours * 3600
+    removed = 0
+    try:
+        names = os.listdir(root)
+    except OSError:
+        return 0
+    for name in names:
+        if not name.startswith(WORKDIR_PREFIX):
+            continue
+        path = os.path.join(root, name)
+        try:
+            if not os.path.isdir(path) or os.path.getmtime(path) > cutoff:
+                continue
+        except OSError:
+            continue
+        shutil.rmtree(path, ignore_errors=True)
+        removed += 1
+    return removed
+
+
+def run(x, y, options=None, progress=None, feedback=None, cancelled=None,
+        resume=None):
     """Delimite et caracterise le bassin versant draine par (x, y).
+
+    Le repertoire de travail est cree ici et detruit en sortant, quel que
+    soit le sort du calcul. Il pese de cinquante a trois cents megaoctets -
+    le MNT et les rasters d'ecoulement - et rien ne le lit une fois la chaine
+    terminee : les couches produites sont en memoire et le rapport
+    reconstruit ce dont il a besoin. Un appelant qui fournit son propre
+    repertoire en garde la charge.
+    """
+    for pending in list(_PENDING):
+        _discard(pending)
+
+    options = options or PipelineOptions()
+    owned = options.workdir is None
+    if owned:
+        options.workdir = tempfile.mkdtemp(prefix=WORKDIR_PREFIX)
+    try:
+        return _run(x, y, options, progress, feedback, cancelled, resume)
+    finally:
+        if owned:
+            _discard(options.workdir)
+            options.workdir = None
+
+
+def _run(x, y, options, progress, feedback, cancelled, resume):
+    """Corps de la chaine, sur un repertoire de travail deja etabli.
 
     x et y sont en Lambert 93. progress recoit (indice d'etape, libelle) ;
     cancelled est un appelable renvoyant True pour interrompre proprement.
 
+    resume reprend l'etat porte par une OversizeBasinError precedente, quand
+    l'utilisateur a demande de poursuivre un calcul refuse : le chevelu deja
+    charge n'est pas retelecharge.
+
     Renvoie un dictionnaire dont les cles reprennent les etapes : network,
     dem, delineation, metrics, water_body, land_cover.
     """
-    options = options or PipelineOptions()
-    workdir = options.workdir or tempfile.mkdtemp(prefix="bvlip_")
+    workdir = options.workdir
     os.makedirs(workdir, exist_ok=True)
 
     def step(index, message):
@@ -95,6 +195,8 @@ def run(x, y, options=None, progress=None, feedback=None, cancelled=None):
         x, y,
         snap_radius=options.snap_radius,
         progress=lambda m: step(0, m),
+        allow_oversize=options.allow_oversize,
+        resume=resume,
     )
     if stop():
         return None
@@ -115,6 +217,12 @@ def run(x, y, options=None, progress=None, feedback=None, cancelled=None):
         threshold=options.stream_threshold,
         snap_radius=options.thalweg_radius,
         simplify_cells=options.simplify_cells,
+        upstream_km=_upstream_km(network_result),
+        upstream=network_result.get("upstream"),
+        validate=lambda geometry: network_containment(
+            geometry, network_result.get("upstream"),
+            (network_result.get("stream") or {}).get("cleabs"),
+        ),
         progress=lambda m: step(2, m),
         feedback=feedback,
     )
@@ -147,10 +255,28 @@ def run(x, y, options=None, progress=None, feedback=None, cancelled=None):
         "metrics": None,
         "water_body": None,
         "land_cover": None,
-        "workdir": workdir,
         "avertissements": [],
         "affinage": None,
     }
+
+    # Deux facons de rendre un bassin tronque sans que rien ne le signale.
+    # Elles se ressemblent et n'ont pas la meme cause : la premiere vient du
+    # reseau, la seconde du MNT. Aucune n'est rattrapable en aval, parce
+    # qu'un bassin coupe garde l'allure d'un bassin juste - et que le
+    # controle de contenance du reseau, calcule sur ce meme reseau tronque,
+    # le valide au lieu de l'alerter.
+    if network_result.get("truncated"):
+        result["avertissements"].append(
+            "Reseau amont incomplet : le plafond d'emprise a ete atteint "
+            "avant d'avoir remonte tout le chevelu. Le bassin est tronque."
+        )
+    edge = _basin_on_edge(delineation_result["geometry"], dem_info)
+    if edge:
+        result["avertissements"].append(
+            "Le contour du bassin affleure le bord du MNT sur {0} : il est "
+            "coupe par l'emprise de calcul et non par la ligne de partage "
+            "des eaux. La surface annoncee est un minorant.".format(edge)
+        )
 
     if options.refine:
         step(3, "Recadrage et seconde passe")
@@ -165,9 +291,15 @@ def run(x, y, options=None, progress=None, feedback=None, cancelled=None):
             dem_info = refined["dem"]
             delineation_result = refined["delineation"]
         elif result["dem"]["resolution"] > dem.RESOLUTION_STEPS[0]:
+            # Le message dit ce qui est constate, pas une cause supposee :
+            # l'affinage renonce aussi bien faute de memoire que parce que le
+            # recadrage ne fait pas gagner un cran de maille, et le journal
+            # affichait alors un avertissement qui contredisait l'etape
+            # elle-meme.
             result["avertissements"].append(
-                "Affinage impossible : le bassin recadre ne tient toujours "
-                "pas dans la memoire disponible."
+                "Affinage sans effet : meme recadre sur le bassin, le calcul "
+                "ne descend pas sous la maille de {0:.0f} m.".format(
+                    result["dem"]["resolution"])
             )
     if stop():
         return result
@@ -217,6 +349,16 @@ def run(x, y, options=None, progress=None, feedback=None, cancelled=None):
     return result
 
 
+def _upstream_km(network_result):
+    """Lineaire du reseau amont connu de la BD TOPO, en kilometres.
+
+    Il borne le recalage de l'exutoire sur le talweg : voir
+    delineation.snap_to_thalweg.
+    """
+    return sum(record["geometry"].length()
+               for record in network_result.get("upstream") or ()) / 1000.0
+
+
 def network_containment(basin_geometry, upstream, outlet_stream_id=None):
     """Part du reseau strictement amont contenue dans le bassin, entre 0 et 1.
 
@@ -249,13 +391,45 @@ def network_containment(basin_geometry, upstream, outlet_stream_id=None):
     return (inside / total) if total > 0 else None
 
 
-CONTAINMENT_MIN = 0.6
 
 
 def _basin_bbox(geometry, margin):
     box = geometry.boundingBox()
     return (box.xMinimum() - margin, box.yMinimum() - margin,
             box.xMaximum() + margin, box.yMaximum() + margin)
+
+
+def _basin_on_edge(geometry, dem_info, tolerance=None):
+    """Cotes de l'emprise du MNT que le contour du bassin vient toucher.
+
+    Renvoie une chaine listant les bords concernes, ou None. C'est le seul
+    controle qui detecte une troncature venue du MNT : un bassin dont la
+    ligne de partage des eaux est reelle s'arrete a distance du bord, un
+    bassin coupe s'y colle sur toute la longueur.
+
+    La tolerance vaut deux mailles par defaut : le contour simplifie peut
+    s'ecarter d'une maille du bord sans que le bassin soit pour autant
+    complet.
+    """
+    resolution = dem_info["resolution"]
+    if tolerance is None:
+        tolerance = 2 * resolution
+    xmin, ymin, xmax, ymax = dem_info["bbox"]
+    box = geometry.boundingBox()
+    sides = []
+    if box.xMinimum() - xmin < tolerance:
+        sides.append("l'ouest")
+    if box.yMinimum() - ymin < tolerance:
+        sides.append("le sud")
+    if xmax - box.xMaximum() < tolerance:
+        sides.append("l'est")
+    if ymax - box.yMaximum() < tolerance:
+        sides.append("le nord")
+    if not sides:
+        return None
+    if len(sides) < 2:
+        return sides[0]
+    return "{0} et {1}".format(", ".join(sides[:-1]), sides[-1])
 
 
 def _touches(inner, outer, tolerance):
@@ -332,6 +506,12 @@ def _refine(network_result, coarse_dem, coarse_basin, options, workdir,
             threshold=options.stream_threshold,
             snap_radius=options.thalweg_radius,
             simplify_cells=options.simplify_cells,
+            upstream_km=_upstream_km(network_result),
+            upstream=network_result.get("upstream"),
+            validate=lambda geometry: network_containment(
+                geometry, network_result.get("upstream"),
+                (network_result.get("stream") or {}).get("cleabs"),
+            ),
             progress=say, feedback=feedback,
         )
 

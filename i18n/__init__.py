@@ -333,6 +333,137 @@ TR = {
         "de": "⚠ {message}",
     },
 
+    # --- Bassin hors gabarit ----------------------------------------------
+    "oversize_title": {
+        "fr": "Bassin trop grand",
+        "en": "Watershed too large",
+        "es": "Cuenca demasiado grande",
+        "pt": "Bacia demasiado grande",
+        "de": "Einzugsgebiet zu gross",
+    },
+    "oversize_text": {
+        "fr": "Ce bassin depasse ce que le traitement charge et n'a pas ete "
+              "calcule.\n\nIl faudrait {count} troncons de reseau, quand la "
+              "limite est de {budget}. Le bassin rendu serait tronque, sans "
+              "que rien ne l'indique sur la carte.",
+        "en": "This watershed exceeds what the run will load and was not "
+              "computed.\n\nIt would take {count} network reaches against a "
+              "limit of {budget}. The resulting basin would be clipped, with "
+              "nothing on the map to show it.",
+        "es": "Esta cuenca supera lo que el proceso carga y no se ha "
+              "calculado.\n\nHarian falta {count} tramos de red, frente a un "
+              "limite de {budget}. La cuenca resultante estaria truncada, sin "
+              "ninguna senal en el mapa.",
+        "pt": "Esta bacia excede o que o processamento carrega e nao foi "
+              "calculada.\n\nSeriam precisos {count} trocos de rede, para um "
+              "limite de {budget}. A bacia obtida ficaria truncada, sem "
+              "qualquer indicacao no mapa.",
+        "de": "Dieses Einzugsgebiet ubersteigt, was der Lauf ladt, und wurde "
+              "nicht berechnet.\n\nNotig waren {count} Gewasserabschnitte bei "
+              "einer Grenze von {budget}. Das Ergebnis ware abgeschnitten, "
+              "ohne Hinweis in der Karte.",
+    },
+    "oversize_detail": {
+        "fr": "Zone hydrographique : {zone}\n"
+              "Deja parcouru : {upstream} troncons, {lineaire_km:.0f} km de "
+              "lineaire, jusqu'a l'echelle du {scale}.\n\n"
+              "Placer l'exutoire plus en amont donne un bassin juste en "
+              "quelques secondes. Aller jusqu'a {max_count} troncons reste "
+              "possible, mais le calcul se compte en minutes et la maille du "
+              "MNT sera grossiere.",
+        "en": "Hydrographic zone: {zone}\n"
+              "Already walked: {upstream} reaches, {lineaire_km:.0f} km of "
+              "network, up to the {scale} level.\n\n"
+              "Moving the outlet further upstream gives a correct basin in "
+              "seconds. Going to {max_count} reaches is still possible, but "
+              "expect minutes and a coarse DEM cell size.",
+        "es": "Zona hidrografica: {zone}\n"
+              "Ya recorrido: {upstream} tramos, {lineaire_km:.0f} km de red, "
+              "hasta la escala del {scale}.\n\n"
+              "Situar el punto de salida mas aguas arriba da una cuenca "
+              "correcta en segundos. Llegar a {max_count} tramos es posible, "
+              "pero el calculo dura minutos y la malla del MDT sera gruesa.",
+        "pt": "Zona hidrografica: {zone}\n"
+              "Ja percorrido: {upstream} trocos, {lineaire_km:.0f} km de "
+              "rede, ate a escala do {scale}.\n\n"
+              "Colocar o exutorio mais a montante da uma bacia correta em "
+              "segundos. Chegar a {max_count} trocos e possivel, mas o "
+              "calculo demora minutos e a malha do MDT sera grosseira.",
+        "de": "Hydrografische Zone: {zone}\n"
+              "Bereits durchlaufen: {upstream} Abschnitte, "
+              "{lineaire_km:.0f} km Netz, bis zur Ebene {scale}.\n\n"
+              "Ein Auslass weiter oberhalb liefert in Sekunden ein korrektes "
+              "Gebiet. Bis {max_count} Abschnitte ist es moglich, dauert aber "
+              "Minuten bei grober Rasterweite.",
+    },
+    "oversize_zone_unknown": {
+        "fr": "non identifiee", "en": "not identified",
+        "es": "no identificada", "pt": "nao identificada",
+        "de": "nicht ermittelt",
+    },
+    "oversize_go": {
+        "fr": "Calculer quand meme (long)",
+        "en": "Compute anyway (slow)",
+        "es": "Calcular de todos modos (lento)",
+        "pt": "Calcular mesmo assim (lento)",
+        "de": "Trotzdem berechnen (langsam)",
+    },
+    "oversize_back": {
+        "fr": "Choisir un autre exutoire",
+        "en": "Pick another outlet",
+        "es": "Elegir otro punto de salida",
+        "pt": "Escolher outro exutorio",
+        "de": "Anderen Auslass wahlen",
+    },
+    "oversize_status": {
+        "fr": "✘ Bassin trop grand : calcul non lance.",
+        "en": "✘ Watershed too large: not computed.",
+        "es": "✘ Cuenca demasiado grande: no calculada.",
+        "pt": "✘ Bacia demasiado grande: nao calculada.",
+        "de": "✘ Einzugsgebiet zu gross: nicht berechnet.",
+    },
+    "oversize_log": {
+        "fr": "\u26a0 Limite atteinte : {count} troncons seraient a charger, "
+              "pour un maximum de {budget}. {upstream} troncons amont deja "
+              "parcourus, {lineaire_km:.0f} km de lineaire.",
+        "en": "\u26a0 Limit reached: {count} reaches would have to be "
+              "loaded, against a maximum of {budget}. {upstream} upstream "
+              "reaches already walked, {lineaire_km:.0f} km of network.",
+        "es": "\u26a0 Limite alcanzado: habria que cargar {count} tramos, "
+              "para un maximo de {budget}. {upstream} tramos aguas arriba ya "
+              "recorridos, {lineaire_km:.0f} km de red.",
+        "pt": "\u26a0 Limite atingido: seriam precisos {count} trocos, para "
+              "um maximo de {budget}. {upstream} trocos a montante ja "
+              "percorridos, {lineaire_km:.0f} km de rede.",
+        "de": "\u26a0 Grenze erreicht: {count} Abschnitte waren zu laden, "
+              "bei maximal {budget}. {upstream} Abschnitte oberhalb bereits "
+              "durchlaufen, {lineaire_km:.0f} km Netz.",
+    },
+    "resuming": {
+        "fr": "\u21bb Reprise du calcul : {dalles} dalles et {troncons} "
+              "troncons deja en memoire, on repart de la.",
+        "en": "\u21bb Resuming: {dalles} tiles and {troncons} reaches already "
+              "in memory, carrying on from there.",
+        "es": "\u21bb Reanudacion: {dalles} teselas y {troncons} tramos ya en "
+              "memoria, se continua desde ahi.",
+        "pt": "\u21bb Retoma: {dalles} mosaicos e {troncons} trocos ja em "
+              "memoria, continua-se dai.",
+        "de": "\u21bb Fortsetzung: {dalles} Kacheln und {troncons} Abschnitte "
+              "bereits im Speicher, es geht dort weiter.",
+    },
+    "oversize_accepted": {
+        "fr": "Calcul integral demande : le budget de troncons est releve, "
+              "le calcul se poursuit.",
+        "en": "Full computation requested: the reach budget is raised, the "
+              "run carries on.",
+        "es": "Calculo integral solicitado: se eleva el limite de tramos, el "
+              "calculo continua.",
+        "pt": "Calculo integral pedido: o limite de trocos e elevado, o "
+              "calculo prossegue.",
+        "de": "Vollstandige Berechnung angefordert: die Abschnittsgrenze wird "
+              "angehoben, der Lauf geht weiter.",
+    },
+
     # --- A propos ---------------------------------------------------------
     "about_title": {
         "fr": "A propos de BVLIP", "en": "About BVLIP",
@@ -352,6 +483,35 @@ TR = {
     "close": {
         "fr": "Fermer", "en": "Close", "es": "Cerrar",
         "pt": "Fechar", "de": "Schliessen",
+    },
+    "about_limits": {
+        "fr": "Taille du bassin : la delimitation charge jusqu'a {guard} "
+              "troncons de reseau, et jusqu'a {hard} si vous le demandez "
+              "explicitement. Ces deux plafonds sont ceux que le plugin se "
+              "fixe pour tenir en memoire, non des limites de la "
+              "Geoplateforme. Au-dela, BVLIP refuse plutot que de rendre un "
+              "bassin coupe au bord de l'emprise.",
+        "en": "Catchment size: delineation loads up to {guard} network "
+              "reaches, and up to {hard} if you explicitly ask. Both "
+              "ceilings are the plugin's own, set to stay within memory, not "
+              "Geoplateforme limits. Beyond them BVLIP refuses rather than "
+              "return a basin clipped at the extent border.",
+        "es": "Tamano de la cuenca: la delimitacion carga hasta {guard} "
+              "tramos de red, y hasta {hard} si lo pide expresamente. Ambos "
+              "limites son los que el complemento se fija para caber en "
+              "memoria, no limites de la Geoplateforme. Mas alla, BVLIP "
+              "rechaza en lugar de devolver una cuenca cortada.",
+        "pt": "Tamanho da bacia: a delimitacao carrega ate {guard} trocos de "
+              "rede, e ate {hard} se o pedir explicitamente. Ambos os "
+              "limites sao os do proprio complemento, para caber em memoria, "
+              "e nao limites da Geoplateforme. Para alem disso, o BVLIP "
+              "recusa em vez de devolver uma bacia cortada.",
+        "de": "Gebietsgrosse: die Abgrenzung ladt bis zu {guard} "
+              "Gewasserabschnitte, auf ausdrucklichen Wunsch bis {hard}. "
+              "Beide Grenzen setzt das Plugin selbst, um im Speicher zu "
+              "bleiben; es sind keine Grenzen der Geoplateforme. Daruber "
+              "lehnt BVLIP ab, statt ein am Rand abgeschnittenes Gebiet zu "
+              "liefern.",
     },
     "data_credit": {
         "fr": "Donnees : RGE ALTI, BD TOPO, BD TOPAGE — IGN / Sandre",

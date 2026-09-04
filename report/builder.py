@@ -6,11 +6,12 @@ Aucun convertisseur externe n'est necessaire, ce qui evite d'imposer une
 dependance a l'utilisateur pour une simple sortie de document.
 
 Les fichiers intermediaires (graphiques, image de carte) sont produits dans un
-dossier temporaire et ne survivent pas a la session : seuls le PDF et le HTML,
-tous deux autonomes, restent a l'endroit choisi par l'utilisateur.
+dossier temporaire et ne survivent pas a la session : seuls le PDF et le
+classeur, tous deux autonomes, restent a l'endroit choisi par l'utilisateur.
 """
 
 import os
+import shutil
 import tempfile
 
 from qgis.core import QgsLayoutExporter, QgsProject
@@ -60,7 +61,7 @@ def _values_of(layers):
 
 
 def _map_image(layout, path, dpi=150):
-    """Rend le seul cadre carte en PNG, pour la version HTML.
+    """Rend le seul cadre carte en PNG, pour le classeur.
 
     exportToImage ne sait exporter que des pages entieres : on passe donc par
     le rendu d'une region, delimitee par le rectangle du cadre carte dans les
@@ -126,3 +127,6 @@ def build_report(result, layers, pdf_path, with_workbook=True, progress=None):
         # pendant l'export : les laisser encombrerait le projet.
         for layer in temporary:
             project.removeMapLayer(layer.id())
+        # Idem pour les graphiques et l'image de carte : ils sont deja dans
+        # le PDF et le classeur, leurs fichiers n'ont plus de lecteur.
+        shutil.rmtree(workdir, ignore_errors=True)

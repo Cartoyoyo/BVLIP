@@ -40,11 +40,46 @@ RETRY_DELAY = 2.0
 # signale pas la troncature autrement qu'en renvoyant exactement le nombre
 # demande. On pagine donc systematiquement.
 WFS_PAGE_SIZE = 5000
+
+# Budget d'entites que l'appelant accepte de charger d'un coup. Ce n'est PAS
+# une limite du service : verifie sur une emprise de 267 185 troncons, il
+# pagine jusqu'au bout sans broncher (STARTINDEX=260000 rend ses 5 000
+# entites, 270000 rend une page vide et propre). Le plafond est le notre, et
+# il protege la memoire, pas le serveur.
 WFS_MAX_FEATURES = 200000
+
+# Delais avant de rejouer une page dont le corps n'est pas du GeoJSON.
+#
+# Cette panne a ete observee sur la Geoplateforme : un releve de metriques
+# de supervision rendu avec un code 200 a la place du GeoJSON demande. Elle
+# n'est pas passagere, et c'est ce qui la rend traitre : un cache HTTP en
+# amont retient la mauvaise reponse et la ressert a l'identique, pour cette
+# URL exacte, aussi longtemps qu'elle y reste. Rejouer la meme requete ne
+# sert donc a rien - pas meme en desactivant le cache local de Qt, puisque
+# le mauvais exemplaire n'est pas chez nous. Verifie : la meme requete a
+# COUNT=4999, ou avec un parametre supplementaire, rend les 13 Mo attendus.
+#
+# Le reessai porte donc une empreinte qui change l'URL. Les delais restent
+# utiles pour le cas ou la panne serait, elle, passagere.
+WFS_BODY_RETRY_DELAYS = (1.0, 3.0, 6.0)
+
+# Parametre ajoute aux reessais pour sortir du cache amont. Le service
+# ignore les parametres qu'il ne connait pas ; seule compte l'URL, qui
+# n'est plus celle de l'entree empoisonnee.
+CACHE_BUSTER = "_bvlip"
 
 
 class GeoserviceError(RuntimeError):
     """Echec d'acces a un service de la Geoplateforme."""
+
+
+class WfsLimitError(GeoserviceError):
+    """L'emprise demandee porte plus d'entites que le service n'en rend.
+
+    Distinguee des autres echecs WFS parce qu'elle seule se corrige en
+    reduisant l'emprise : un appelant qui choisit son emprise peut la
+    rattraper, la ou une reponse invalide ne lui laisse rien a faire.
+    """
 
 
 def _explain(reply):
@@ -63,7 +98,7 @@ def _explain(reply):
     return text[:200] if text else "sans explication du service"
 
 
-def _fetch(url, timeout=DEFAULT_TIMEOUT):
+def _fetch(url, timeout=DEFAULT_TIMEOUT, no_cache=False):
     """Requete HTTP GET avec reessais sur erreur reseau ou erreur serveur.
 
     Le telechargement passe par le gestionnaire de reseau de QGIS et non par
@@ -89,6 +124,15 @@ def _fetch(url, timeout=DEFAULT_TIMEOUT):
         # fond suspendue indefiniment : le bouton Annuler ne rendrait la main
         # qu'a la fin d'une etape qui ne se termine jamais.
         request.setTransferTimeout(int(timeout * 1000))
+        if no_cache:
+            # Une reponse invalide arrivee avec un code 200 est mise en
+            # cache comme une autre : la rejouer telle quelle rendrait le
+            # meme corps, instantanement et indefiniment. Le reessai n'a de
+            # sens qu'en repassant par le reseau.
+            request.setAttribute(
+                QNetworkRequest.Attribute.CacheLoadControlAttribute,
+                QNetworkRequest.CacheLoadControl.AlwaysNetwork,
+            )
         blocking = QgsBlockingNetworkRequest()
         error = blocking.get(request)
         reply = blocking.reply()
@@ -117,6 +161,7 @@ def _fetch(url, timeout=DEFAULT_TIMEOUT):
 
 # --------------------------------------------------------------------- WFS
 
+
 def _wfs_page(typename, bbox, page_size, start_index, resource_id, timeout):
     params = {
         "SERVICE": "WFS",
@@ -127,21 +172,52 @@ def _wfs_page(typename, bbox, page_size, start_index, resource_id, timeout):
         "OUTPUTFORMAT": "application/json",
         "COUNT": str(page_size),
     }
-    if start_index:
-        params["STARTINDEX"] = str(start_index)
     if bbox is not None:
         params["BBOX"] = "{0},{1},{2},{3},{4}".format(*bbox, CRS)
     if resource_id is not None:
         params["RESOURCEID"] = resource_id
+    if start_index:
+        params["STARTINDEX"] = str(start_index)
 
     url = WFS_URL + "?" + urllib.parse.urlencode(params)
-    payload = _fetch(url, timeout)
-    try:
-        return json.loads(payload.decode("utf-8")).get("features", [])
-    except ValueError as exc:
-        raise GeoserviceError(
-            "Reponse WFS illisible pour {0} : {1}".format(typename, exc)
-        )
+
+    # Une page illisible est rejouee, mais jamais a l'identique : voir
+    # WFS_BODY_RETRY_DELAYS et CACHE_BUSTER. _fetch ne peut pas s'en
+    # charger, il ne voit qu'un code 200 et un corps, et ignore que ce
+    # corps devait etre du JSON. Sans ce reessai, une entree de cache
+    # empoisonnee cote service fait perdre un traitement de plusieurs
+    # minutes, sur un message parlant d'une emprise trop grande alors que
+    # la meme requete, a une lettre pres dans l'URL, rend les donnees.
+    head = b""
+    attempts = len(WFS_BODY_RETRY_DELAYS) + 1
+    for attempt in range(attempts):
+        if attempt:
+            # L'URL change a chaque reessai : c'est le seul moyen de ne pas
+            # se voir resservir l'entree de cache qui vient d'echouer, en
+            # amont comme en local.
+            retry = dict(params)
+            retry[CACHE_BUSTER] = "{0}-{1}".format(int(time.time()), attempt)
+            url = WFS_URL + "?" + urllib.parse.urlencode(retry)
+        payload = _fetch(url, timeout, no_cache=attempt > 0)
+        try:
+            return json.loads(payload.decode("utf-8")).get("features", [])
+        except ValueError:
+            head = payload[:160]
+            if attempt < attempts - 1:
+                time.sleep(WFS_BODY_RETRY_DELAYS[attempt])
+    # Le detail du corps recu est le seul element qui permette de dire si
+    # la panne est chez le service ou chez nous. Elle a deja ete observee :
+    # la Geoplateforme a rendu un releve de metriques de supervision, avec
+    # un code 200, a la place du GeoJSON demande.
+    raise GeoserviceError(
+        "Le service a repondu autre chose que du GeoJSON pour {0}, sur "
+        "{1} tentatives etalees sur {2:.0f} s, URL variee a chaque fois "
+        "pour sortir du cache. C'est une panne du service, pas de la "
+        "requete : reessayez dans un moment. Debut de la reponse : "
+        "{3}".format(
+            typename, attempts, sum(WFS_BODY_RETRY_DELAYS),
+            " ".join(head.decode("utf-8", "replace").split())[:120])
+    )
 
 
 def wfs_pages(typename, bbox=None, resource_id=None,
@@ -162,16 +238,18 @@ def wfs_pages(typename, bbox=None, resource_id=None,
     total = 0
     start = 0
     while True:
-        page = _wfs_page(typename, bbox, page_size, start, resource_id, timeout)
+        page = _wfs_page(typename, bbox, page_size, start, resource_id,
+                         timeout)
         total += len(page)
         if page:
             yield page
         if len(page) < page_size:
             return
         if total >= max_features:
-            raise GeoserviceError(
-                "Plus de {0} entites dans l'emprise pour {1} : reduisez "
-                "l'etendue du traitement.".format(max_features, typename)
+            raise WfsLimitError(
+                "Plus de {0} entites dans l'emprise pour {1}, budget que "
+                "le traitement s'est fixe. Le service, lui, en servirait "
+                "davantage.".format(max_features, typename)
             )
         start += page_size
 

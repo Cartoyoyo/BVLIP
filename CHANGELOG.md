@@ -3,6 +3,101 @@
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le
 plugin la [gestion sémantique de version](https://semver.org/lang/fr/).
 
+## [0.9.2] - 2026-09-04
+
+### Ajouté
+
+- **Le chevelu amont se charge de proche en proche, par dalles de 10 km.** Le
+  WFS ne filtre que par emprise : on ne peut pas lui demander « les tronçons à
+  l'amont de celui-ci ». La dalle de l'exutoire est chargée, le graphe remonté
+  tant qu'il peut l'être, et là où le parcours bute sur un nœud sans amont
+  connu, la dalle qui contient ce nœud est chargée à son tour — vague après
+  vague, quatre requêtes de front, les dalles contiguës d'une même rangée
+  regroupées en une seule requête.
+
+  Mesuré sur l'Allier à Vichy : 125 dalles, 56 726 tronçons lus pour 38 013
+  utiles, en 77 s. Le rectangle englobant en demandait 267 185 et n'aboutissait
+  pas.
+
+- **Un bassin hors gabarit est refusé, et le refus est une question.** Au-delà
+  de 80 000 tronçons, le calcul s'arrête et montre ce qui a été atteint contre
+  ce que coûterait la suite. Le refus est le choix par défaut ; si l'utilisateur
+  demande d'aller au bout, jusqu'à 200 000 tronçons, le calcul **repart de ce
+  qui est déjà chargé** au lieu de tout refaire.
+
+  Le garde-fou porte sur les tronçons réellement lus et non sur une largeur
+  d'emprise : la densité du chevelu va du simple au double d'une région à
+  l'autre, et un seuil en kilomètres se trompait dans les deux sens.
+
+- **Seconde recherche de l'exutoire, guidée par l'écoulement.** Quand le bassin
+  obtenu ne contient pas le réseau amont qu'il devrait, l'exutoire est cherché
+  par l'amont : on s'accroche là où le lit cartographié et celui du MNT
+  coïncident franchement, puis on suit les flèches d'écoulement vers l'aval
+  jusqu'au point qui passe au plus près du point demandé. Sur le Darot, cette
+  approche rend 15,05 km² là où la première en rendait 0,04.
+
+- **Ménage des répertoires de travail** au démarrage de QGIS, pour ce qu'une
+  session fermée brutalement a pu oublier. Relevé sur un poste : 116 dossiers
+  et 6 Go, jusqu'à saturer le disque — et le symptôme n'était pas « disque
+  plein » mais un raster tronqué en plein calcul.
+
+- **La fiche du plugin annonce les seuils**, lus dans le module qui les
+  applique plutôt que recopiés.
+
+### Modifié
+
+- **Les canaux ne sont plus remontés.** Un canal n'est pas un chemin de
+  drainage : l'eau du Canal de Roanne à Digoin vient de la Loire par
+  dérivation. Sur la Besbre à Diou, la remontée empruntait un chemin de
+  53 tronçons jusqu'à la Loire et ramenait 47 442 tronçons sur 16 100 km² pour
+  un bassin qui en fait un millier. Canaux, aqueducs et bassins portuaires sont
+  désormais infranchissables ; buses, écoulements canalisés et retenues restent
+  franchissables, car ce sont des cours d'eau ordinaires.
+
+- **L'écoulement est routé en direction simple.** `r.water.outlet` ne lit que la
+  carte des directions : en écoulement multiple, elle et l'accumulation cessent
+  de mesurer la même chose — à l'embouchure du Gourcet, 5,47 km² annoncés pour
+  1,02 ha extraits. En direction simple : 16,31 km² annoncés, 16,307 extraits.
+  Le coût est négligeable, de 0,006 à 0,03 % de surface sur quatre bassins de
+  33 à 9 008 km².
+
+- **Le recalage de l'exutoire retient le talweg le plus proche qui puisse être
+  le bon**, et non le plus drainé : une surface minimale déduite du linéaire
+  BD TOPO écarte les ravins voisins, les mailles dont le bassin sort de
+  l'emprise sont ignorées, et la recherche s'élargit jusqu'à 400 m tant
+  qu'aucun chenal recevable n'est à portée.
+
+- **Le contrôle de contenance exige 60 % du linéaire strictement amont**, le
+  tronçon portant l'exutoire étant écarté du décompte : il se prolonge vers
+  l'aval et cette partie-là est légitimement dehors.
+
+- **README refondu** : limites connues réorganisées en six volets et complétées
+  — domaine d'emploi, taille des bassins, délimitation, précision des mesures,
+  données annexes, interface et sorties — plus un résumé des limites en
+  espagnol, portugais et allemand.
+
+### Corrigé
+
+- **Les altitudes aberrantes du MNT sont réparées avant tout calcul.** Le
+  service rend −97 m à 50 m de maille là où il rend 371 à 536 m à 5 m et à
+  25 m : ces valeurs naissent du rééchantillonnage, pas de la donnée source.
+  Non filtrées, elles donnaient sur l'Allier à Vichy une dénivelée de 6 535 m
+  au lieu de 1 936. La portion fautive est redemandée à une maille plus fine,
+  où la donnée est saine, puis ramenée par moyenne de blocs ; à défaut elle est
+  comblée par interpolation, jamais laissée en trou — un trou en fond de vallée
+  coupe l'écoulement et ampute le bassin, 8 394 km² au lieu de 9 008.
+
+- **Une réponse WFS qui n'est pas du GeoJSON est rejouée sous une autre URL.**
+  La Géoplateforme a rendu un relevé de métriques de supervision avec un code
+  200 à la place des données ; un cache en amont resservait la mauvaise réponse
+  à l'identique. Varier l'URL est le seul moyen d'en sortir.
+
+- **Un bassin tronqué est signalé** plutôt que rendu en silence : chevelu amont
+  incomplet, ou contour venant affleurer le bord du MNT.
+
+- Commentaires du module de rapport qui parlaient encore d'une sortie HTML,
+  supprimée depuis, et affectation dupliquée dans le lancement du panneau.
+
 ## [0.9.1] - 2026-09-03
 
 ### Modifie

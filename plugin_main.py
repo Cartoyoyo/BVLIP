@@ -13,7 +13,7 @@ n'en est que plus court, et ce qu'on y voit est ce dont on se sert.
 
 import os
 
-from qgis.core import QgsApplication
+from qgis.core import Qgis, QgsApplication, QgsMessageLog
 from qgis.PyQt.QtCore import QSettings, Qt
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QActionGroup, QMenu
@@ -50,6 +50,7 @@ class BvlipPlugin:
     # ------------------------------------------------------- Cycle de vie
 
     def initGui(self):  # noqa: N802 (API QGIS)
+        self._sweep_workdirs()
         self._init_processing()
         icon = QIcon(os.path.join(PLUGIN_DIR, "icons", "icon.png"))
 
@@ -61,6 +62,26 @@ class BvlipPlugin:
         self.iface.addToolBarIcon(self.action)
 
         self._build_menu(icon)
+
+    @staticmethod
+    def _sweep_workdirs():
+        """Efface les repertoires de travail qu'une session passee a oublies.
+
+        Au demarrage, une fois, et sans jamais faire echouer le chargement du
+        plugin : un menage rate n'est pas une raison de priver l'utilisateur
+        de l'extension.
+        """
+        try:
+            from .core.pipeline import sweep_workdirs
+            removed = sweep_workdirs()
+        except Exception:      # noqa: BLE001 - le menage n'est pas critique
+            return
+        if removed:
+            QgsMessageLog.logMessage(
+                "{0} repertoire(s) de travail abandonne(s) efface(s).".format(
+                    removed),
+                "BVLIP", Qgis.MessageLevel.Info,
+            )
 
     def _build_menu(self, icon):
         """Sous-menu de l'extension : panneau, reglages, langue, a propos."""
