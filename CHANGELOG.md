@@ -3,6 +3,28 @@
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le
 plugin la [gestion sémantique de version](https://semver.org/lang/fr/).
 
+## [1.0.1] - 2026-09-05
+
+### Corrigé
+
+- **L'interface retrouve ses accents, dans les cinq langues.** Le dictionnaire
+  de traduction avait été écrit en ASCII : le panneau annonçait « Arrete de
+  protection de biotope », « Donnees a rapatrier » et « Apercu 3D du relief »,
+  et les autres langues étaient logées à la même enseigne — « Espanol »,
+  « proteccion », « protecao », « Datensatze », « offnen ». Deux entrées
+  seulement, « Réglages », portaient déjà les leurs, ce qui rendait l'ensemble
+  incohérent plutôt que délibéré.
+
+  Le rapport, lui, n'était pas touché : ses libellés viennent des tables de
+  champs et non de l'i18n. C'est ce qui a laissé le défaut passer aussi
+  longtemps — on relit le rapport, on ne relit plus le panneau.
+
+  Les cas d'homographie ont été tranchés un par un sur leur phrase, et non au
+  moyen d'une règle générale : « le site relève de l'évaluation » et « le
+  budget est relevé » s'écrivent de la même façon sans accent, « on ferme »
+  et « territoire classé » aussi. Les gabarits {ainsi} sont restés intacts,
+  faute de quoi « {troncons} » serait devenu un nom de variable inexistant.
+
 ## [1.0.0] - 2026-09-05
 
 ### Ajouté

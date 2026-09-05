@@ -7,7 +7,7 @@
 **Cliquez un point sur un cours d'eau : le bassin versant qui l'alimente est délimité, caractérisé, cartographié et mis en rapport — sans préparer la moindre donnée.**
 
 [![QGIS](https://img.shields.io/badge/QGIS-3.40%2B-green?logo=qgis&logoColor=white)](https://qgis.org)
-[![Version](https://img.shields.io/badge/version-1.0.0-blue)](metadata.txt)
+[![Version](https://img.shields.io/badge/version-1.0.1-blue)](metadata.txt)
 [![License](https://img.shields.io/badge/license-GPL%20v3-orange)](LICENSE)
 [![Données](https://img.shields.io/badge/données-IGN%20%7C%20Sandre-informational)](https://geoservices.ign.fr)
 [![Interface](https://img.shields.io/badge/interface-FR%20%7C%20EN%20%7C%20ES%20%7C%20PT%20%7C%20DE-lightgrey)](i18n/__init__.py)
@@ -585,6 +585,7 @@ Le détail complet, avec les mesures qui ont motivé chaque correction, est dans
 
 | Version | Notes |
 |---------|-------|
+| **1.0.1** | L'interface retrouve ses accents dans les cinq langues |
 | **1.0.0** | Zonages environnementaux, obstacles à l'écoulement, masses d'eau souterraines et hydroécorégions — couvert forestier, agriculture déclarée et biologique — huit couches en sous-groupes — rapport multipage à cartes thématiques — panneau à onglets — temps de concentration retirés |
 | **0.9.2** | Chevelu chargé par dalles — bassins hors gabarit refusés, avec reprise — canaux non remontés — altitudes aberrantes du MNT réparées |
 | **0.9.1** | Nouveau logo : ligne de partage, chevelu et exutoire |
