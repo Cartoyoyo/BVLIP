@@ -33,6 +33,12 @@ from .geoservices import GeoserviceError, wfs_features, wfs_pages
 
 LAYER_RPG = "RPG.LATEST:parcelles_graphiques"
 LAYER_CODES = "RPG.LATEST:codes_cultures"
+# Millesime fige, faute d'alias : le service publie RPG.LATEST pour les
+# parcelles anonymes mais rien d'equivalent pour la couche categorisee, seule
+# a porter les champs bio. Quand le millesime suivant paraitra, cette couche
+# disparaitra du service et l'etape se signalera d'elle-meme dans les
+# avertissements du traitement, sans emporter le reste - il suffira alors de
+# changer l'annee ici.
 LAYER_BIO = ("IGNF_RPG_PARCELLES-AGRICOLES-CATEGORISEES_2024:"
              "parcelles_agricole_categorisees_2024")
 LAYER_PRAIRIES = "PRAIRIES.SENSIBLES.BCAE:prairies_sensibles"
@@ -133,7 +139,7 @@ def _sans_accent(text):
                    if unicodedata.category(c) != "Mn").lower()
 
 
-def _is_grass(code, label, categorie):
+def _is_grass(label, categorie):
     """Cette culture est-elle de l'herbe plutot qu'une culture ?
 
     Le libelle servi tranche quand on l'a ; a defaut - table des codes
@@ -152,12 +158,19 @@ def _geometry(feature):
     )
 
 
-def _clipped(feature, basin):
+def _clip(feature, basin):
+    """Geometrie de l'entite decoupee sur le bassin, ou None si elle n'y est
+    pas. Renvoie la forme et non sa seule surface : les deux sont voulues, et
+    l'intersection est ce que le decoupage a de plus couteux - la calculer
+    deux fois doublait le temps de l'etape agricole, sur des bassins qui
+    portent un millier de parcelles."""
     geometry = _geometry(feature)
     if geometry.isEmpty():
-        return 0.0
+        return None
     clipped = geometry.intersection(basin)
-    return 0.0 if clipped.isEmpty() else clipped.area()
+    if clipped.isEmpty() or clipped.area() <= 0:
+        return None
+    return clipped
 
 
 def _bbox(basin):
@@ -212,16 +225,16 @@ def declared_parcels(basin, progress=None, timeout=120):
     parcelles = []
     for page in wfs_pages(LAYER_RPG, bbox=_bbox(basin), timeout=timeout):
         for feature in page:
-            area = _clipped(feature, basin)
-            if area <= 0:
+            clipped = _clip(feature, basin)
+            if clipped is None:
                 continue
+            area = clipped.area()
             properties = feature["properties"]
             culture = str(properties.get("code_cultu") or "").strip()
             categorie = str(properties.get("cat_cult_p") or "").strip()
-            clipped = _geometry(feature).intersection(basin)
             par_culture[culture] = par_culture.get(culture, 0.0) + area
             par_categorie[categorie] = par_categorie.get(categorie, 0.0) + area
-            est_herbe = _is_grass(culture, labels.get(culture), categorie)
+            est_herbe = _is_grass(labels.get(culture), categorie)
             if est_herbe:
                 herbe += area
             else:
@@ -318,9 +331,10 @@ def organic_parcels(basin, progress=None, timeout=120):
     for page in wfs_pages(LAYER_BIO, bbox=_bbox(basin), timeout=timeout):
         for feature in page:
             properties = feature["properties"]
-            area = _clipped(feature, basin)
-            if area <= 0:
+            clipped = _clip(feature, basin)
+            if clipped is None:
                 continue
+            area = clipped.area()
             declare += area
             if not properties.get("bio"):
                 continue
@@ -337,7 +351,7 @@ def organic_parcels(basin, progress=None, timeout=120):
                 "culture": labels.get(culture) or culture,
                 "surface_ha": area / 1e4,
                 "part_pct": 100.0 * area / total,
-                "geometrie": _geometry(feature).intersection(basin),
+                "geometrie": clipped,
             })
         del page
 
@@ -367,9 +381,9 @@ def _simple_area(typename, basin, label, progress=None, timeout=90):
     count = 0
     for page in wfs_pages(typename, bbox=_bbox(basin), timeout=timeout):
         for feature in page:
-            clipped = _clipped(feature, basin)
-            if clipped > 0:
-                area += clipped
+            clipped = _clip(feature, basin)
+            if clipped is not None:
+                area += clipped.area()
                 count += 1
         del page
     return {

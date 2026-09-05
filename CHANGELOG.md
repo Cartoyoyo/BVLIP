@@ -3,7 +3,7 @@
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le
 plugin la [gestion sémantique de version](https://semver.org/lang/fr/).
 
-## [Non publié]
+## [1.0.0] - 2026-09-05
 
 ### Ajouté
 

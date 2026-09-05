@@ -71,7 +71,7 @@ def as_bool(value):
     return None
 
 
-def features_in(typename, geometry, timeout=None):
+def features_in(typename, geometry):
     """Entites d'une couche Sandre rencontrant la geometrie donnee.
 
     Le service filtre sur l'emprise, jamais sur la forme : le test

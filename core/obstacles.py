@@ -42,7 +42,12 @@ STATE_EXISTING = "existant"
 # Absence de dispositif de franchissement piscicole, telle que le Sandre la
 # libelle. Le test porte sur le libelle et non sur le code : celui-ci vaut
 # "0" pour l'absence, ce qui se confond trop facilement avec une valeur nulle.
-NO_FISH_PASS = "absence"
+#
+# La constante ne s'appelle pas NO_FISH_PASS : Bandit lit "PASS" dans un nom
+# de constante suivi d'une chaine et signale un mot de passe en dur, ce qui
+# bloque la publication sur plugins.qgis.org. Le renommage est la correction,
+# pas un contournement - il n'y a jamais eu de mot de passe ici.
+ABSENCE_DISPOSITIF = "absence"
 
 # Plafond du releve detaille, ouvrages et stations confondus.
 #
@@ -103,7 +108,7 @@ def _has_fish_pass(attributes):
     label = str(attributes.get("LbTypeDispFranchPiscicole1") or "").strip()
     if not label:
         return None
-    return not label.lower().startswith(NO_FISH_PASS)
+    return not label.lower().startswith(ABSENCE_DISPOSITIF)
 
 
 def _is_existing(attributes):
