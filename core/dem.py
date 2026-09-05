@@ -12,6 +12,7 @@ appels voisins produisent des pixels alignes.
 import math
 import os
 import struct
+from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 from osgeo import gdal, osr
@@ -71,6 +72,21 @@ LAMBERT93_EPSG = 2154
 # en petit-boutien. On garde la constante explicite pour que la lecture reste
 # lisible et modifiable si le service evoluait.
 BIL_DTYPE = "<f4"
+
+# Dalles de MNT menees de front. Meme raison, meme mesure que pour le chevelu
+# (voir network.FETCH_WORKERS) : le gain plafonne au-dela de quatre, et il n'y
+# a pas de raison de matraquer un service public gratuit.
+DEM_WORKERS = 4
+
+# En deca de cette taille, le MNT part en une seule requete : le decoupage
+# ferait payer plusieurs allers-retours pour quelques centaines de
+# kilooctets.
+DEM_SPLIT_MIN_PIXELS = 1e6
+
+# Charge utile que l'on accepte d'avoir en vol, toutes dalles confondues.
+# Soixante-quatre megaoctets tiennent partout et laissent quatre dalles de
+# quatre millions de mailles.
+DEM_INFLIGHT_BYTES = 64e6
 
 
 class DemError(RuntimeError):
@@ -196,6 +212,46 @@ def _tiles(width, height, step):
             yield col, row, min(step, width - col), min(step, height - row)
 
 
+def _tile_step(width, height, workers=DEM_WORKERS):
+    """Cote de dalle a demander, en mailles.
+
+    La limite du service impose un plafond ; en dessous, rien n'oblige a
+    demander le raster d'un bloc, et il y a tout a gagner a ne pas le faire.
+    Une requete unique est servie a une vitesse qui lui est propre : le MNT
+    d'un bassin de 151 km2, 17,4 Mo en un seul aller-retour, met une
+    quinzaine de secondes. Le module reseau, lui, tire quatre requetes de
+    front et mesure un facteur quatre sur le meme service.
+
+    On decoupe donc volontairement le plus grand cote en deux, ce qui donne
+    quatre dalles sur un raster a peu pres carre, une par fil.
+
+    Deux gardes. Un petit MNT n'est pas decoupe : chaque aller-retour coute sa
+    seconde quelle que soit sa taille, et le decoupage couterait plus qu'il ne
+    rapporte. Et la dalle reste bornee par la limite du service, seule
+    contrainte qui ne se negocie pas.
+    """
+    ceiling = WMS_MAX_PIXELS
+    if width * height < DEM_SPLIT_MIN_PIXELS or workers < 2:
+        return ceiling
+    return min(ceiling, int(math.ceil(max(width, height) / 2.0)))
+
+
+def _fetch_workers(tile_width, tile_height, workers=DEM_WORKERS):
+    """Nombre de dalles a mener de front, borne par la memoire.
+
+    Les charges utiles des dalles en vol coexistent en memoire. Sur un grand
+    MNT, une dalle au plafond du service pese cent megaoctets : quatre de
+    front en feraient quatre cents, exactement ce que le reste du module
+    s'emploie a eviter. Le budget est donc exprime en octets, et les tres
+    grandes dalles retombent naturellement sur une requete a la fois, comme
+    avant.
+    """
+    payload = tile_width * tile_height * 4
+    if payload <= 0:
+        return 1
+    return max(1, min(workers, int(DEM_INFLIGHT_BYTES // payload)))
+
+
 def _unpack(payload, width, height):
     """Convertit les octets BIL en liste de listes de flottants, ligne par
     ligne du nord vers le sud (ordre natif du format)."""
@@ -245,6 +301,31 @@ def _ring_median(grid, radius):
     return result
 
 
+def _window_max(grid, radius):
+    """Maximum sur la fenetre carree centree, en deux passes separables.
+
+    Le maximum d'un carre est le maximum, par colonne, des maxima de lignes :
+    deux balayages de 2*radius decalages suffisent, la ou la mediane d'anneau
+    doit empiler ses vingt-quatre copies et les trier. C'est ce qui rend le
+    pre-filtre de _suspect trente fois plus rapide que le calcul qu'il evite.
+    """
+    padded = np.pad(grid, radius, mode="edge")
+    height, width = padded.shape
+    span = 2 * radius
+
+    horizontal = padded.copy()
+    for shift in range(1, span + 1):
+        np.maximum(horizontal[:, :width - shift], padded[:, shift:],
+                   out=horizontal[:, :width - shift])
+
+    vertical = horizontal.copy()
+    for shift in range(1, span + 1):
+        np.maximum(vertical[:height - shift, :], horizontal[shift:, :],
+                   out=vertical[:height - shift, :])
+
+    return vertical[:grid.shape[0], :grid.shape[1]]
+
+
 def _suspect(grid):
     """Masque des mailles qui ne peuvent pas etre du terrain.
 
@@ -259,12 +340,38 @@ def _suspect(grid):
     seuil franc : la reparation va rechercher la vraie altitude a maille
     fine, si bien qu'une maille marquee a tort est remplacee par sa propre
     valeur. On y perd une requete, pas de la justesse.
+
+    Le critere relatif est le plus cher de la chaine locale : sur un MNT de
+    4,4 Mpx, cinq secondes de tri pour ne rien marquer du tout, ce qui est le
+    cas courant d'un MNT sain. Il est donc precede d'un pre-filtre, et ce
+    pre-filtre est exact et non heuristique :
+
+        maille marquee  =>  maille < mediane de l'anneau - SPIKE_DROP
+                        et  mediane de l'anneau <= maximum de la fenetre
+                        donc maille < maximum de la fenetre - SPIKE_DROP
+
+    Toute maille marquee verifie donc la condition du pre-filtre. La
+    reciproque est fausse, et c'est sans importance : le pre-filtre n'ecarte
+    que ce qui ne peut pas etre marque, et la mediane d'anneau, seule juge,
+    tranche ensuite sur ce qui reste. Aucune detection n'est perdue - verifie
+    maille a maille sur un MNT sain et sur un MNT porteur d'artefacts.
+
+    La mediane n'est alors calculee que sur les amas de candidats, elargis du
+    rayon de l'anneau pour que chacun d'eux voie ses vrais voisins.
     """
-    return (
-        (grid < Z_MIN_PLAUSIBLE)
-        | (grid > Z_MAX_PLAUSIBLE)
-        | (grid < _ring_median(grid, SPIKE_RING_CELLS) - SPIKE_DROP)
-    )
+    absolute = (grid < Z_MIN_PLAUSIBLE) | (grid > Z_MAX_PLAUSIBLE)
+
+    candidates = grid < (_window_max(grid, SPIKE_RING_CELLS) - SPIKE_DROP)
+    if not candidates.any():
+        return absolute
+
+    relative = np.zeros(grid.shape, dtype=bool)
+    for top, left, bottom, right in _clusters(candidates,
+                                              pad=SPIKE_RING_CELLS):
+        window = grid[top:bottom + 1, left:right + 1]
+        ring = _ring_median(window, SPIKE_RING_CELLS)
+        relative[top:bottom + 1, left:right + 1] = window < ring - SPIKE_DROP
+    return absolute | (relative & candidates)
 
 
 def _clusters(mask, pad=1):
@@ -491,24 +598,53 @@ def download_dem(bbox, output_path, resolution=None, layer=LAYER_DEM,
     band = dataset.GetRasterBand(1)
     band.SetNoDataValue(NODATA)
 
-    tiles = list(_tiles(width, height, WMS_MAX_PIXELS))
-    for index, (col, row, tile_width, tile_height) in enumerate(tiles, 1):
-        tile_bbox = (
+    tiles = list(_tiles(width, height, _tile_step(width, height)))
+
+    def tile_bbox(tile):
+        col, row, tile_width, tile_height = tile
+        return (
             xmin + col * resolution,
             ymax - (row + tile_height) * resolution,
             xmin + (col + tile_width) * resolution,
             ymax - row * resolution,
         )
-        if len(tiles) > 1:
-            report("  dalle {0}/{1}".format(index, len(tiles)))
-        payload = wms_bil(tile_bbox, tile_width, tile_height, layer=layer)
-        rows = _unpack(payload, tile_width, tile_height)
-        for offset, line in enumerate(rows):
+
+    def download(tile):
+        return wms_bil(tile_bbox(tile), tile[2], tile[3], layer=layer)
+
+    def store(tile, payload):
+        """Ecrit une dalle recue. Toujours dans le fil appelant : un jeu de
+        donnees GDAL ne s'ecrit pas a plusieurs."""
+        col, row, tile_width, tile_height = tile
+        for offset, line in enumerate(_unpack(payload, tile_width,
+                                              tile_height)):
             band.WriteRaster(
                 col, row + offset, tile_width, 1,
                 struct.pack("<{0}f".format(tile_width), *line),
                 buf_type=gdal.GDT_Float32,
             )
+
+    if len(tiles) == 1:
+        store(tiles[0], download(tiles[0]))
+    else:
+        workers = _fetch_workers(tiles[0][2], tiles[0][3])
+        report("  {0} dalle(s), {1} en parallele".format(
+            len(tiles), workers))
+        done = 0
+        # Par lots de la taille du parallelisme : les charges utiles en vol
+        # sont alors bornees, la ou un pool alimente d'un coup les garderait
+        # toutes jusqu'a ce qu'on les consomme.
+        for start in range(0, len(tiles), workers):
+            batch = tiles[start:start + workers]
+            if len(batch) == 1:
+                payloads = [download(batch[0])]
+            else:
+                with ThreadPoolExecutor(max_workers=len(batch)) as pool:
+                    payloads = list(pool.map(download, batch))
+            for tile, payload in zip(batch, payloads):
+                store(tile, payload)
+                done += 1
+            report("    {0}/{1} dalles ecrites".format(done, len(tiles)))
 
     band.FlushCache()
     voids = _repair(band, (xmin, ymax), resolution, layer, report)

@@ -5,20 +5,29 @@ Ils vivent dans les preferences de QGIS plutot que dans le panneau : un rayon
 d'accrochage ou un choix de langue n'a pas a etre repose a chaque ouverture,
 et sortir ces reglages du panneau libere la place pour ce qui sert a chaque
 usage, le choix de l'exutoire et le lancement.
+
+Le choix des donnees a rapatrier fait exception : il se retouche d'un bassin
+a l'autre, il reste donc dans le panneau. Il y est conserve tout de meme, sous
+la forme d'une seule chaine de cles separees par des virgules - voir
+core.datasets, qui la fabrique et la relit.
 """
 
 from qgis.PyQt.QtCore import QSettings
+
+from ..core import datasets as catalogue
 
 PREFIX = "BVLIP/"
 
 # (cle, valeur par defaut, type). Le type sert a relire correctement : QSettings
 # rend des chaines sous Windows, et "false" est une chaine vraie en Python.
+#
+# La valeur par defaut de "datasets" est None et non la liste des defauts :
+# None dit "aucun reglage conserve", et se distingue ainsi de la chaine vide,
+# qui est une selection vide voulue par l'utilisateur.
 DEFAULTS = (
     ("snap_radius", 50, int),
     ("thalweg_radius", 50, int),
-    ("with_metrics", True, bool),
-    ("with_land_cover", True, bool),
-    ("refine", False, bool),
+    ("datasets", None, str),
     ("language", "", str),
 )
 
@@ -64,6 +73,17 @@ def reset():
         store.remove(PREFIX + key)
 
 
+def selected_datasets(values=None):
+    """Ensemble des donnees choisies, tel qu'il a ete conserve."""
+    values = values or load()
+    return catalogue.from_setting(values.get("datasets"))
+
+
+def save_datasets(selection):
+    """Conserve la selection de donnees."""
+    save({"datasets": catalogue.to_setting(selection)})
+
+
 def pipeline_options(values=None, **overrides):
     """Construit les options de traitement a partir des reglages."""
     from ..core.pipeline import PipelineOptions
@@ -72,9 +92,7 @@ def pipeline_options(values=None, **overrides):
     options = PipelineOptions(
         snap_radius=float(values["snap_radius"]),
         thalweg_radius=float(values["thalweg_radius"]),
-        with_metrics=values["with_metrics"],
-        with_land_cover=values["with_land_cover"],
-        refine=values["refine"],
+        datasets=selected_datasets(values),
     )
     for key, value in overrides.items():
         setattr(options, key, value)

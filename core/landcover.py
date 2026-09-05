@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Occupation du sol du bassin versant.
 
-Deux sources, complementaires plutot que concurrentes :
+Trois sources, complementaires plutot que concurrentes :
 
   Corine Land Cover 2018   couverture complete et nomenclature normalisee, mais
                            unite minimale de collecte de 25 ha. Sur un petit
@@ -11,10 +11,15 @@ Deux sources, complementaires plutot que concurrentes :
                            Indispensable ici : CLC efface purement et
                            simplement les hameaux, et annoncerait 0 % d'urbain
                            sur un bassin qui en compte plusieurs.
+  BD Foret v2              formations vegetales forestieres, a 0,5 ha. Meme
+                           defaut corrige que pour le bati, du cote de la
+                           foret cette fois : CLC ne voit pas un boisement de
+                           dix hectares, la ou il change l'ecoulement.
 
-Les deux ne sont pas additionnees. CLC fournit la repartition, qui somme a
-100 %, et la BD TOPO un indicateur de bati mesure independamment. Les melanger
-reviendrait a compter deux fois les memes surfaces.
+Les trois ne sont pas additionnees. CLC fournit la repartition, qui somme a
+100 %, la BD TOPO un indicateur de bati et la BD Foret un indicateur de
+boisement, tous deux mesures independamment. Les melanger reviendrait a
+compter deux fois les memes surfaces.
 """
 
 import json
@@ -26,6 +31,22 @@ from .geoservices import GeoserviceError, wfs_pages
 LAYER_CLC = "LANDCOVER.CLC18_FR:clc18_fr"
 LAYER_BUILDINGS = "BDTOPO_V3:batiment"
 LAYER_SETTLEMENTS = "BDTOPO_V3:zone_d_habitation"
+LAYER_FOREST = "LANDCOVER.FORESTINVENTORY.V2:formation_vegetale"
+
+# Regroupement des formations de la BD Foret v2 en trois grands peuplements.
+#
+# La lecture se fait sur le libelle du regroupement en onze classes - "Foret
+# fermee feuillus", "Foret ouverte coniferes" - et non sur l'attribut
+# d'essence. Celui-ci descend jusqu'a l'espece : sur un bassin de la Montagne
+# bourbonnaise il rend Douglas, Hetre, Melese, Sapin-epicea, Chenes decidus,
+# la ou seuls "Feuillus", "Coniferes" et "Mixte" etaient attendus. Trier sur
+# lui reviendrait a ne compter que les polygones les moins renseignes, et a
+# sous-estimer le boisement d'un facteur deux.
+FOREST_GROUPS = (
+    ("feuillus", "feuillus"),
+    ("coniferes", "conifères"),
+    ("mixte", "mixte"),
+)
 
 # Nomenclature Corine Land Cover, niveau 3. Les libelles sont ceux du
 # referentiel europeen traduit, conserves tels quels pour que le rapport soit
@@ -84,6 +105,33 @@ CLC_LEVEL1 = {
     "4": "Zones humides",
     "5": "Surfaces en eau",
 }
+
+
+# Teintes des formations de la BD Foret, reconnues au mot qui les distingue
+# dans leur libelle. L'ordre compte : "sans couvert arbore" ne doit rencontrer
+# aucun mot avant de tomber sur la teinte par defaut.
+#
+# Les libelles de l'inventaire ne contiennent aucune negation - "Foret fermee
+# feuillus", "Lande", "Formation herbacee" - le rapprochement au mot y est
+# donc sans piege, a la difference des codes culture du RPG.
+FOREST_COLORS = (
+    ("feuillus", "#4f9d69"),
+    ("conifères", "#2f6d5a"),
+    ("mixte", "#7a9d4f"),
+    ("peupleraie", "#8fbf9d"),
+    ("lande", "#b5a05f"),
+    ("herbacée", "#c4c48a"),
+)
+FOREST_DEFAULT = "#9aa89a"
+
+
+def formation_color(libelle):
+    """Teinte d'une formation vegetale, d'apres son libelle."""
+    plat = (libelle or "").lower()
+    for mot, couleur in FOREST_COLORS:
+        if mot in plat:
+            return couleur
+    return FOREST_DEFAULT
 
 
 class LandCoverError(RuntimeError):
@@ -214,20 +262,116 @@ def built_up(basin, progress=None):
     return result
 
 
-def compute(basin, with_built_up=True, progress=None):
+def forest(basin, progress=None):
+    """Couvert forestier mesure sur la BD Foret v2.
+
+    L'inventaire distingue plus de trente formations vegetales ; c'est le
+    regroupement en onze classes qui est repris ici, seul niveau ou la
+    nomenclature reste lisible dans un rapport.
+
+    Deux totaux, et il faut les distinguer. Le couvert renvoye par la BD
+    Foret comprend les landes et les formations herbacees, qui ne sont pas
+    des bois ; la surface boisee au sens strict n'est que la somme des
+    peuplements feuillus, coniferes et mixtes. Sur un bassin de moyenne
+    montagne l'ecart atteint dix points, assez pour changer la lecture d'un
+    rapport. La distinction compte aussi en hydrologie : un peuplement
+    resineux n'intercepte pas la pluie comme une hetraie, et une lande
+    n'intercepte presque rien.
+    """
+    if progress:
+        progress("BD Forêt v2...")
+    total = basin.area()
+    if total <= 0:
+        raise LandCoverError("Bassin de surface nulle.")
+
+    by_formation = {}
+    # Les polygones sont conserves avec leur forme : ils alimentent la couche
+    # QGIS et la carte de la section "Occupation du sol" du rapport.
+    polygones = []
+    for page in wfs_pages(LAYER_FOREST, bbox=_bbox(basin), timeout=90):
+        for feature in page:
+            geometry = QgsGeometry(
+                QgsJsonUtils.geometryFromGeoJson(
+                    json.dumps(feature["geometry"]))
+            )
+            if geometry.isEmpty():
+                continue
+            clipped = geometry.intersection(basin)
+            if clipped.isEmpty():
+                continue
+            area = clipped.area()
+            if area <= 0:
+                continue
+            formation = str(
+                feature["properties"].get("tfv_g11") or "").strip()
+            by_formation[formation] = by_formation.get(formation, 0.0) + area
+            polygones.append({
+                "libelle": formation or "Formation non renseignée",
+                "essence": str(
+                    feature["properties"].get("essence") or "").strip(),
+                "surface_ha": area / 1e4,
+                "part_pct": 100.0 * area / total,
+                "geometrie": clipped,
+            })
+        del page
+
+    covered = sum(by_formation.values())
+    formations = [
+        {
+            "libelle": name or "Formation non renseignée",
+            "surface_ha": area / 1e4,
+            "part_pct": 100.0 * area / total,
+        }
+        for name, area in sorted(by_formation.items(), key=lambda kv: -kv[1])
+    ]
+
+    result = {
+        "formations": formations,
+        "polygones": polygones,
+        "surface_ha": covered / 1e4,
+        "part_pct": 100.0 * covered / total,
+        "dominante": formations[0]["libelle"] if formations else None,
+        "dominante_pct": formations[0]["part_pct"] if formations else None,
+        "source": "BD Forêt v2 (IGN), unité minimale 0,5 ha",
+    }
+
+    wooded = 0.0
+    for key, token in FOREST_GROUPS:
+        area = sum(value for name, value in by_formation.items()
+                   if token in name.lower())
+        wooded += area
+        result[key + "_pct"] = 100.0 * area / total if area else None
+    result["boisee_ha"] = wooded / 1e4
+    result["boisee_pct"] = 100.0 * wooded / total
+    return result
+
+
+def compute(basin, with_corine=True, with_built_up=True, with_forest=True,
+            progress=None):
     """Occupation du sol complete du bassin.
+
+    Les trois sources se demandent separement : elles repondent a des
+    questions differentes et ne coutent pas le meme temps, le bati de la BD
+    TOPO se comptant en dizaines de milliers de polygones la ou Corine en
+    rend quelques dizaines.
 
     Une source indisponible ne fait pas echouer l'ensemble : la partie
     manquante est renvoyee a None et le reste du rapport reste produit.
     """
-    values = {"corine": None, "bati": None}
-    try:
-        values["corine"] = corine(basin, progress)
-    except (GeoserviceError, LandCoverError) as exc:
-        values["corine_erreur"] = str(exc)
+    values = {"corine": None, "bati": None, "foret": None}
+    if with_corine:
+        try:
+            values["corine"] = corine(basin, progress)
+        except (GeoserviceError, LandCoverError) as exc:
+            values["corine_erreur"] = str(exc)
     if with_built_up:
         try:
             values["bati"] = built_up(basin, progress)
         except GeoserviceError as exc:
             values["bati_erreur"] = str(exc)
+    if with_forest:
+        try:
+            values["foret"] = forest(basin, progress)
+        except (GeoserviceError, LandCoverError) as exc:
+            values["foret_erreur"] = str(exc)
     return values

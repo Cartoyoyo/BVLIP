@@ -26,15 +26,17 @@ cote d'une carte ; un panneau qui affiche tous les reglages ne l'est plus.
 import os
 import time
 
+from qgis.core import Qgis
 from qgis.PyQt import sip
-from qgis.PyQt.QtCore import Qt, QTimer, QUrl
+from qgis.PyQt.QtCore import QPoint, Qt, QTimer, QUrl
 from qgis.PyQt.QtGui import QDesktopServices, QFont
 from qgis.PyQt.QtWidgets import (
-    QApplication, QCheckBox, QDockWidget, QFileDialog, QGridLayout, QGroupBox,
-    QLabel, QMessageBox, QProgressBar, QPushButton, QSizePolicy, QTextEdit,
-    QVBoxLayout, QWidget,
+    QApplication, QCheckBox, QDockWidget, QFileDialog, QFrame, QGridLayout,
+    QGroupBox, QHBoxLayout, QLabel, QMessageBox, QProgressBar, QPushButton,
+    QScrollArea, QSizePolicy, QTabWidget, QTextEdit, QVBoxLayout, QWidget,
 )
 
+from ..core import datasets as catalogue
 from ..core.network import SEED_FEATURE_MAX, OversizeBasinError
 from ..i18n import tr
 from . import settings
@@ -42,6 +44,26 @@ from .outlet_map_tool import OutletMapTool
 
 # Hauteur commune a tous les boutons du panneau.
 BTN_HEIGHT = 30
+
+# Hauteur en deca de laquelle on ne retrecit jamais le panneau, meme si
+# l'ecran est minuscule : en dessous, l'ascenseur aurait plus de course que de
+# fenetre et le panneau cesserait d'etre utilisable.
+PANEL_MIN_HEIGHT = 240
+
+# Marge gardee sous le panneau, pour que sa bordure reste attrapable.
+PANEL_BOTTOM_MARGIN = 4
+
+# Hauteur du bloc des onglets de donnees, la meme pour les quatre.
+#
+# Elle avait d'abord ete calculee par onglet, pour qu'aucun ne garde de vide
+# sous ses cases. Mal lui en a pris : le cadre qui l'entoure ne se
+# redimensionne pas au meme moment, et les cases venaient se poser sur les
+# boutons de selection. Une hauteur unique ne coute qu'un peu de vide sur les
+# onglets courts, et elle ne se decale jamais.
+#
+# Huit lignes visibles sur les douze zonages : assez pour que la barre de
+# defilement se voie et dise qu'il y en a d'autres.
+TAB_HEIGHT = 212
 
 BTN_PRIMARY = (
     "QPushButton{background:#2c3e50;color:#fff;border-radius:5px;"
@@ -62,10 +84,38 @@ BTN_PICK = (
     "QPushButton:checked{background:#c0392b}"
     "QPushButton:disabled{background:#95a5a6}"
 )
+# Les deux boutons de selection ne lancent rien : ils se presentent donc en
+# retrait, comme les liens d'une barre d'outils et non comme des actions.
+BTN_SMALL = (
+    "QPushButton{background:#ecf0f1;color:#2c3e50;border:1px solid #bdc3c7;"
+    "border-radius:4px;font-size:11px;padding:2px 10px}"
+    "QPushButton:hover{background:#dfe4e6}"
+    "QPushButton:disabled{color:#95a5a6}"
+)
+# Le i des descriptions : present sans peser, il ne doit pas concurrencer du
+# regard la case qu'il accompagne.
+INFO_MARK = "QLabel{color:#7f8c8d;font-size:12px}QLabel:hover{color:#2980b9}"
 BTN_CANCEL = (
     "QPushButton{background:#c0392b;color:#fff;border-radius:5px;"
     "font-weight:bold;font-size:11px}"
     "QPushButton:hover{background:#d44534}"
+    "QPushButton:disabled{background:#bdc3c7}"
+)
+# L'apercu est le cadet du rapport : meme famille de couleur, ton plus clair.
+# Il n'ecrit rien, il n'a donc pas a se presenter avec le meme poids que le
+# bouton qui, lui, produit des fichiers.
+BTN_PREVIEW = (
+    "QPushButton{background:#a569bd;color:#fff;border-radius:5px;"
+    "font-weight:bold;font-size:11px}"
+    "QPushButton:hover{background:#b784cd}"
+    "QPushButton:disabled{background:#bdc3c7}"
+)
+# La vue en relief n'ecrit rien elle non plus, mais elle ne produit pas la
+# meme chose que le rapport : elle sort de sa famille de couleur.
+BTN_VIEW3D = (
+    "QPushButton{background:#2e86c1;color:#fff;border-radius:5px;"
+    "font-weight:bold;font-size:11px}"
+    "QPushButton:hover{background:#3f96d1}"
     "QPushButton:disabled{background:#bdc3c7}"
 )
 
@@ -103,6 +153,12 @@ class BvlipDock(QDockWidget):
         self._build_ui()
         self.retranslate()
 
+        # Le panneau se reborne des qu'il bouge : change de bord, se detache,
+        # ou change d'ecran. Sa hauteur utile depend de l'endroit ou il est
+        # pose, pas seulement de sa taille.
+        self.dockLocationChanged.connect(lambda _area: self._limit_to_screen())
+        self.topLevelChanged.connect(lambda _floating: self._limit_to_screen())
+
     # ------------------------------------------------------------------ UI
 
     def _build_ui(self):
@@ -131,21 +187,79 @@ class BvlipDock(QDockWidget):
         self.grp_outlet.setLayout(outlet_layout)
         layout.addWidget(self.grp_outlet)
 
-        # Etapes de calcul : elles se decident d'un bassin a l'autre, elles
-        # restent donc sous la main. Les reglages d'accrochage, eux, se posent
-        # une fois et vivent dans le menu de l'extension.
+        # Ce qu'on rapatrie se decide d'un bassin a l'autre : la liste reste
+        # donc sous la main, dans le panneau. Les reglages d'accrochage, eux,
+        # se posent une fois et vivent dans le menu de l'extension.
+        #
+        # Une case par donnee, rangees en onglets. Vingt-deux cases a la
+        # suite feraient un panneau qu'on parcourt a la molette et ou l'on ne
+        # trouve rien ; reparties en quatre familles, chacune se lit d'un
+        # coup et l'onglet dit deja de quoi il retourne. Les zonages sont a
+        # eux seuls la moitie de la liste, ce qui justifiait de les isoler.
         self.grp_options = QGroupBox()
         options_layout = QVBoxLayout()
-        stored = settings.load()
-        self.chk_metrics = QCheckBox()
-        self.chk_metrics.setChecked(stored["with_metrics"])
-        self.chk_landcover = QCheckBox()
-        self.chk_landcover.setChecked(stored["with_land_cover"])
-        self.chk_refine = QCheckBox()
-        self.chk_refine.setChecked(stored["refine"])
-        for widget in (self.chk_metrics, self.chk_landcover, self.chk_refine):
-            widget.toggled.connect(self._save_options)
-            options_layout.addWidget(widget)
+        options_layout.setSpacing(6)
+        chosen = settings.selected_datasets()
+
+        self.tabs_options = QTabWidget()
+        self.tabs_options.setFixedHeight(TAB_HEIGHT)
+        self.chk_datasets = {}
+        self.info_datasets = {}
+        for tab in catalogue.TABS:
+            page = QWidget()
+            page_layout = QVBoxLayout()
+            page_layout.setContentsMargins(8, 8, 8, 4)
+            page_layout.setSpacing(4)
+            for key in catalogue.keys_of(tab):
+                # Une case, puis un i discret cale a droite. La description
+                # complete ne peut pas tenir dans l'intitule - il en faudrait
+                # quatre lignes - et elle ne peut pas non plus etre passee
+                # sous silence : ce que rapatrie une case, et surtout la
+                # reserve qui l'accompagne, ne se devinent pas de son nom.
+                row = QHBoxLayout()
+                row.setSpacing(4)
+                box = QCheckBox()
+                box.setChecked(key in chosen)
+                box.toggled.connect(self._save_options)
+                self.chk_datasets[key] = box
+                row.addWidget(box, 1)
+
+                info = QLabel("ⓘ")
+                info.setStyleSheet(INFO_MARK)
+                info.setCursor(Qt.CursorShape.WhatsThisCursor)
+                self.info_datasets[key] = info
+                row.addWidget(info, 0)
+                page_layout.addLayout(row)
+            page_layout.addStretch()
+            page.setLayout(page_layout)
+
+            scroll = QScrollArea()
+            scroll.setWidget(page)
+            scroll.setWidgetResizable(True)
+            scroll.setFrameShape(QFrame.Shape.NoFrame)
+            self.tabs_options.addTab(scroll, "")
+        options_layout.addWidget(self.tabs_options)
+
+        # Tout cocher ou tout decocher porte sur l'onglet affiche, pas sur la
+        # liste entiere : c'est le geste dont on a besoin sur les douze
+        # zonages, et l'appliquer aux vingt-deux cases effacerait un choix
+        # fait dans un autre onglet sans que rien ne le montre.
+        select_row = QHBoxLayout()
+        select_row.setSpacing(6)
+        self.btn_all = QPushButton()
+        self.btn_all.setStyleSheet(BTN_SMALL)
+        self.btn_all.clicked.connect(lambda: self._set_current_tab(True))
+        self.btn_none = QPushButton()
+        self.btn_none.setStyleSheet(BTN_SMALL)
+        self.btn_none.clicked.connect(lambda: self._set_current_tab(False))
+        select_row.addWidget(self.btn_all)
+        select_row.addWidget(self.btn_none)
+        select_row.addStretch()
+        self.lbl_datasets = QLabel()
+        self.lbl_datasets.setStyleSheet("color:#7f8c8d;font-size:11px")
+        select_row.addWidget(self.lbl_datasets)
+        options_layout.addLayout(select_row)
+
         self.grp_options.setLayout(options_layout)
         layout.addWidget(self.grp_options)
 
@@ -178,11 +292,26 @@ class BvlipDock(QDockWidget):
         self.btn_report.clicked.connect(self.make_report)
         layout.addWidget(self.btn_report)
 
+        # L'apercu vient apres le rapport dans la pile, mais avant lui dans
+        # l'usage : on regarde la page, puis on decide de l'enregistrer.
+        self.btn_preview = QPushButton()
+        self.btn_preview.setStyleSheet(BTN_PREVIEW)
+        self.btn_preview.setEnabled(False)
+        self.btn_preview.clicked.connect(self.show_preview)
+        layout.addWidget(self.btn_preview)
+
+        self.btn_view3d = QPushButton()
+        self.btn_view3d.setStyleSheet(BTN_VIEW3D)
+        self.btn_view3d.setEnabled(False)
+        self.btn_view3d.clicked.connect(self.show_view3d)
+        layout.addWidget(self.btn_view3d)
+
         # Tous les boutons a la meme hauteur, et les deux boutons cote a cote
         # a la meme largeur : c'est la regularite qui rend une pile de boutons
         # lisible, pas la taille de chacun.
         for button in (self.btn_pick, self.btn_run, self.btn_cancel,
-                       self.btn_report):
+                       self.btn_report, self.btn_preview,
+                       self.btn_view3d):
             button.setCursor(Qt.CursorShape.PointingHandCursor)
             button.setMinimumHeight(BTN_HEIGHT)
             button.setMaximumHeight(BTN_HEIGHT)
@@ -212,7 +341,87 @@ class BvlipDock(QDockWidget):
 
         layout.addStretch()
         container.setLayout(layout)
-        self.setWidget(container)
+
+        # Le panneau entier defile. Empile, son contenu demande environ sept
+        # cents pixels de haut : l'exutoire, les quatre onglets de donnees,
+        # cinq boutons, la barre d'avancement et le journal. Sur un portable,
+        # ou le bandeau lateral en offre quatre cents, le bas etait tout
+        # bonnement hors d'atteinte - le bouton de rapport comme le journal -
+        # sans que rien ne signale qu'il existait.
+        #
+        # L'ascenseur horizontal est laisse au besoin plutot qu'interdit : un
+        # panneau retreci sous la largeur de la barre d'onglets doit se
+        # parcourir, pas se faire couper.
+        scroll = QScrollArea()
+        scroll.setWidget(container)
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.scroll = scroll
+        self.setWidget(scroll)
+
+    # ------------------------------------------------- Tenue a l'ecran
+
+    def _limit_to_screen(self):
+        """Empeche le panneau de descendre sous le bas visible de l'ecran.
+
+        L'ascenseur ne se declenche que si Qt voit un debordement, et Qt ne
+        regarde que le dock : tant que le contenu tient dedans, pas de barre.
+        Or le dock, lui, peut deborder de l'ecran sans que Qt s'en emeuve.
+
+        Releve sur un poste : ecran 1366 x 768, fenetre QGIS maximisee a
+        1368 x 1023 - trois cents pixels de plus que l'ecran, un reste de
+        geometrie d'un autre moniteur que Windows conserve. Le panneau ancre
+        a droite y faisait 789 pixels de haut, dont 267 sous le bord bas de
+        l'ecran. Son contenu tenait tout juste dans ses 770 pixels : aucun
+        ascenseur, et un quart du panneau inatteignable, journal compris.
+
+        On borne donc le panneau a ce que l'ecran montre vraiment. Le reste
+        du dock, s'il en subsiste, est hors champ de toute facon, et
+        l'ascenseur reprend son office.
+        """
+        if not self._alive(self):
+            return
+        screen = self.screen() if hasattr(self, "screen") else None
+        if screen is None:
+            return
+        area = screen.availableGeometry()
+
+        # Detache, le panneau est une fenetre a lui seul : on peut la remonter
+        # dans l'ecran au lieu de se contenter de la raccourcir. Ancre, sa
+        # position est celle que lui donne la fenetre principale, et seule sa
+        # hauteur nous appartient.
+        if self.isFloating():
+            frame = self.frameGeometry()
+            if frame.bottom() > area.bottom() or frame.top() < area.top():
+                self.move(frame.x(),
+                          max(area.top(),
+                              min(frame.y(),
+                                  area.bottom() - frame.height())))
+
+        top = self.mapToGlobal(QPoint(0, 0)).y()
+        room = max(PANEL_MIN_HEIGHT, area.bottom() - top - PANEL_BOTTOM_MARGIN)
+        # Seule une valeur qui change est posee : setMaximumHeight declenche
+        # un redimensionnement, qui rappellerait cette methode.
+        if self.maximumHeight() != room:
+            self.setMaximumHeight(room)
+
+    def showEvent(self, event):          # noqa: N802 (API Qt)
+        super().showEvent(event)
+        # Au premier affichage, la position du panneau n'est connue qu'une
+        # fois la fenetre posee : on repasse donc apres la boucle d'evenements.
+        QTimer.singleShot(0, self._limit_to_screen)
+
+    def resizeEvent(self, event):        # noqa: N802 (API Qt)
+        super().resizeEvent(event)
+        self._limit_to_screen()
+
+    def moveEvent(self, event):          # noqa: N802 (API Qt)
+        super().moveEvent(event)
+        self._limit_to_screen()
 
     def retranslate(self):
         """Reapplique tous les libelles dans la langue courante."""
@@ -221,19 +430,37 @@ class BvlipDock(QDockWidget):
         self.grp_outlet.setTitle(tr("group_outlet", lang))
         self.btn_pick.setText(tr("btn_pick", lang))
         self.grp_options.setTitle(tr("group_options", lang))
-        self.chk_metrics.setText(tr("opt_metrics", lang))
-        self.chk_landcover.setText(tr("opt_landcover", lang))
-        self.chk_refine.setText(tr("opt_refine", lang))
-        self.chk_refine.setToolTip(tr("refine_tip", lang))
+        for index, tab in enumerate(catalogue.TABS):
+            self.tabs_options.setTabText(
+                index, tr(catalogue.tab_label_key(tab), lang))
+        for key, box in self.chk_datasets.items():
+            box.setText(tr(catalogue.label_key(key), lang))
+            # La meme description sur la case et sur son i : le survol de
+            # l'un ou de l'autre doit apprendre la meme chose, le i n'etant
+            # qu'un reperage visuel.
+            description = tr(catalogue.info_key(key), lang)
+            box.setToolTip(description)
+            self.info_datasets[key].setToolTip(description)
+        self.btn_all.setText(tr("btn_select_all", lang))
+        self.btn_none.setText(tr("btn_select_none", lang))
+        self._refresh_dataset_count()
         self.btn_run.setText(tr("btn_run", lang))
         self.btn_cancel.setText(tr("btn_cancel", lang))
         self.btn_report.setText(tr("btn_report", lang))
         self.btn_report.setToolTip(tr("report_tip", lang))
+        self.btn_preview.setText(tr("btn_preview", lang))
+        self.btn_preview.setToolTip(tr("preview_tip", lang))
+        self.btn_view3d.setText(tr("btn_view3d", lang))
+        self.btn_view3d.setToolTip(tr("view3d_tip", lang))
         self.lbl_status.setText(tr("ready", lang))
         self.progress.setFormat(tr("progress_fmt", lang))
         self._refresh_outlet_label()
 
     # --------------------------------------------------------------- Slots
+
+    def _selected_datasets(self):
+        return {key for key, box in self.chk_datasets.items()
+                if box.isChecked()}
 
     def _save_options(self, _checked=False):
         """Les cases sont la source de verite : elles s'enregistrent aussitot.
@@ -241,11 +468,34 @@ class BvlipDock(QDockWidget):
         Le traitement relit les reglages au lancement, il n'y a donc qu'un
         seul endroit ou l'etat est conserve.
         """
-        settings.save({
-            "with_metrics": self.chk_metrics.isChecked(),
-            "with_land_cover": self.chk_landcover.isChecked(),
-            "refine": self.chk_refine.isChecked(),
-        })
+        settings.save_datasets(self._selected_datasets())
+        self._refresh_dataset_count()
+
+    def _refresh_dataset_count(self):
+        """Rappelle combien de donnees sont cochees, tous onglets confondus.
+
+        Sans ce compte, un onglet replie peut cacher une case decochee et le
+        rapport arriverait ampute sans que rien ne l'ait annonce.
+        """
+        if not self._alive(self.lbl_datasets):
+            return
+        self.lbl_datasets.setText(tr("datasets_count", self.lang).format(
+            len(self._selected_datasets()), len(catalogue.KEYS)))
+
+    def _set_current_tab(self, checked):
+        """Coche ou decoche toutes les cases de l'onglet affiche."""
+        index = self.tabs_options.currentIndex()
+        if not 0 <= index < len(catalogue.TABS):
+            return
+        for key in catalogue.keys_of(catalogue.TABS[index]):
+            box = self.chk_datasets.get(key)
+            if box is not None and self._alive(box):
+                # blockSignals evite d'ecrire les reglages une fois par case :
+                # l'enregistrement se fait une seule fois, a la fin.
+                box.blockSignals(True)
+                box.setChecked(checked)
+                box.blockSignals(False)
+        self._save_options()
 
     def _on_pick_toggled(self, checked):
         if checked:
@@ -331,16 +581,16 @@ class BvlipDock(QDockWidget):
         QApplication.processEvents()
 
     def set_controls_enabled(self, enabled):
-        for widget in (
-            self.btn_run, self.btn_pick, self.chk_metrics,
-            self.chk_landcover, self.chk_refine,
-        ):
+        for widget in (self.btn_run, self.btn_pick, self.tabs_options,
+                       self.btn_all, self.btn_none):
             if self._alive(widget):
                 widget.setEnabled(enabled)
-        if self._alive(self.btn_report):
-            self.btn_report.setEnabled(
-                enabled and self.last_result is not None
-            )
+        for button in (self.btn_report, self.btn_preview,
+                       self.btn_view3d):
+            # Les deux sortent la meme page : ils s'allument ensemble, des
+            # qu'un bassin est calcule, et s'eteignent pendant un traitement.
+            if self._alive(button):
+                button.setEnabled(enabled and self.last_result is not None)
         if self._alive(self.btn_cancel):
             self.btn_cancel.setEnabled(not enabled and self._task is not None)
 
@@ -544,18 +794,119 @@ class BvlipDock(QDockWidget):
 
     # -------------------------------------------------------------- Rapport
 
+    def show_preview(self):
+        """Apercu avant impression du dernier bassin, sans rien enregistrer.
+
+        C'est la meme page que celle du rapport, montee par la meme fonction :
+        ce qui s'affiche est ce qui sortira du PDF. La difference est qu'ici
+        rien n'est ecrit - on regarde, on imprime depuis la fenetre, ou on
+        ferme. Le geste naturel devient alors : voir d'abord, enregistrer
+        ensuite si la page convient.
+
+        La fenetre est modale et le panneau reste verrouille tant qu'elle est
+        ouverte : la mise en page vit sur les couches memoire du bassin, qu'un
+        nouveau calcul remplacerait sous ses pieds.
+        """
+        from ..report import builder, charts, layout as layout_module
+
+        if self.last_result is None or self._running:
+            return
+
+        self._running = True
+        self._started = time.time()
+        self.set_controls_enabled(False)
+        if not charts.available():
+            self.log(tr("no_charts", self.lang))
+        try:
+            with builder.prepared_layout(
+                self.last_result, self.last_layers,
+                progress=lambda m: self.log("  " + str(m)),
+            ) as prepared:
+                page = prepared[0]
+                self._status(tr("btn_preview", self.lang))
+                layout_module.print_preview(
+                    page, tr("btn_preview", self.lang), self,
+                    export_label=tr("preview_export", self.lang),
+                    on_export=lambda window: self._export_from_preview(
+                        page, window),
+                )
+        except Exception as exc:
+            self.log(tr("done_error", self.lang, error=exc))
+            self._status(tr("done_error", self.lang, error=exc))
+        finally:
+            self._running = False
+            self._started = 0.0
+            self.set_controls_enabled(True)
+
+    def show_view3d(self):
+        """Ouvre le bloc-diagramme du bassin, tournant a la souris.
+
+        Le relief a ete preleve pendant le calcul, le MNT ayant disparu
+        depuis : si l'etape a echoue, la fenetre le dit plutot que de s'ouvrir
+        vide. Elle est modale, comme l'apercu, et pour la meme raison - elle
+        vit sur le resultat du dernier calcul.
+        """
+        from .view3d_dialog import View3dDialog
+
+        if self.last_result is None or self._running:
+            return
+        relief = self.last_result.get("relief")
+        if not relief:
+            self.log(tr("view3d_missing", self.lang))
+            self._status(tr("view3d_missing", self.lang))
+            return
+        try:
+            View3dDialog(relief, self.lang, self).exec_()
+        except Exception as exc:
+            self.log(tr("done_error", self.lang, error=exc))
+            self._status(tr("done_error", self.lang, error=exc))
+
+    def _export_from_preview(self, page, window):
+        """Enregistre en PDF la page affichee dans l'apercu.
+
+        Seul le PDF sort par ce chemin : c'est la page qu'on a sous les yeux
+        qu'on enregistre, pas le rapport complet. Le classeur reste au bouton
+        du panneau, qui produit les deux d'un coup.
+
+        Le dialogue d'enregistrement est accroche a la fenetre d'apercu et non
+        au panneau : sans cela il s'ouvrirait derriere elle, puisqu'elle est
+        modale.
+        """
+        from ..report import layout as layout_module
+
+        path, _filter = QFileDialog.getSaveFileName(
+            window, tr("report_dialog", self.lang), self._default_report_path(),
+            "PDF (*.pdf)"
+        )
+        if not path:
+            return
+        if not path.lower().endswith(".pdf"):
+            path += ".pdf"
+        try:
+            layout_module.export_pdf(page, path)
+        except Exception as exc:
+            self.log(tr("done_error", self.lang, error=exc))
+            return
+        self.log(tr("report_done", self.lang, path=path))
+
+    @staticmethod
+    def _default_report_path():
+        """Chemin propose a l'enregistrement : le dossier personnel, et un nom
+        qui porte la date, pour que deux rapports ne se recouvrent pas."""
+        return os.path.join(
+            os.path.expanduser("~"),
+            "BVLIP_{0}.pdf".format(time.strftime("%Y%m%d_%H%M")),
+        )
+
     def make_report(self):
         """Produit le rapport A4 du dernier bassin delimite."""
         from ..report import builder, charts, excel
 
         if self.last_result is None or self._running:
             return
-        default = os.path.join(
-            os.path.expanduser("~"),
-            "BVLIP_{0}.pdf".format(time.strftime("%Y%m%d_%H%M")),
-        )
         path, _filter = QFileDialog.getSaveFileName(
-            self, tr("report_dialog", self.lang), default, "PDF (*.pdf)"
+            self, tr("report_dialog", self.lang),
+            self._default_report_path(), "PDF (*.pdf)"
         )
         if not path:
             return
@@ -599,37 +950,58 @@ class BvlipDock(QDockWidget):
             self.set_controls_enabled(True)
 
     def _offer_to_open(self, produced):
-        """Propose d'ouvrir le dossier ou le rapport vient d'etre ecrit.
+        """Annonce le rapport dans la barre de messages de QGIS.
 
-        Le rapport part rarement seul : il y a le PDF et le classeur, souvent a
-        transmettre dans la foulee. Plutot que de laisser l'utilisateur
-        retrouver le chemin dans le journal, on lui ouvre l'emplacement.
+        Un bandeau, et non une fenetre a valider. La difference n'est pas
+        cosmetique : une boite modale arrete tout et exige une reponse pour un
+        travail qui est deja fait, alors que le rapport est ecrit et qu'il n'y
+        a plus rien a decider. Le bandeau dit la meme chose sans interrompre,
+        laisse le bouton sous la main aussi longtemps qu'on en a besoin, et
+        s'efface d'un clic. C'est aussi ce que fait QGIS apres un export de
+        mise en page : l'utilisateur y reconnait un geste qu'il connait deja.
 
         L'ouverture passe par QDesktopServices, qui delegue au gestionnaire de
         fichiers du systeme : pas de commande shell a construire, donc rien a
-        echapper et rien a adapter d'un systeme a l'autre.
+        echapper, rien a adapter d'un systeme a l'autre, et aucun
+        sous-processus - que le depot refuserait.
         """
         paths = [p for p in (produced.get("pdf"), produced.get("xlsx")) if p]
         if not paths:
             return
-        folder = os.path.dirname(paths[0])
 
-        box = QMessageBox(self)
-        box.setIcon(QMessageBox.Icon.Information)
-        box.setWindowTitle(tr("report_ready_title", self.lang))
-        box.setText(tr(
-            "open_folder_ask", self.lang,
-            files="\n".join(os.path.basename(p) for p in paths),
-        ))
-        box.setInformativeText(folder)
-        open_button = box.addButton(tr("open_folder", self.lang),
-                                    QMessageBox.ButtonRole.AcceptRole)
-        box.addButton(tr("close", self.lang), QMessageBox.ButtonRole.RejectRole)
-        box.exec_()
+        bar = self.iface.messageBar()
+        widget = bar.createMessage(
+            tr("report_ready_title", self.lang),
+            tr("open_folder_ask", self.lang,
+               files=", ".join(os.path.basename(p) for p in paths)),
+        )
+        button = QPushButton(tr("open_folder", self.lang), widget)
+        button.setCursor(Qt.CursorShape.PointingHandCursor)
+        button.clicked.connect(
+            lambda: self._open_folder(os.path.dirname(paths[0]), paths[0])
+        )
+        widget.layout().addWidget(button)
+        # Sans duree : le bandeau reste tant qu'on ne l'a pas ferme. Un
+        # rapport ne se consulte pas toujours dans les dix secondes qui
+        # suivent, et un bouton qui disparait tout seul est un bouton perdu.
+        bar.pushWidget(widget, Qgis.MessageLevel.Info)
 
-        if box.clickedButton() is open_button:
-            if not QDesktopServices.openUrl(QUrl.fromLocalFile(folder)):
-                self.log(tr("open_folder_failed", self.lang, path=folder))
+    def _open_folder(self, folder, document):
+        """Ouvre le dossier du rapport, ou le rapport lui-meme a defaut.
+
+        Le repli n'est pas de la precaution : selon le poste, le gestionnaire
+        de fichiers refuse parfois d'ouvrir un dossier alors qu'il ouvre sans
+        difficulte un document qui s'y trouve. Mieux vaut alors le PDF que
+        rien du tout - c'est de toute facon ce que l'utilisateur allait
+        ouvrir.
+        """
+        if QDesktopServices.openUrl(QUrl.fromLocalFile(folder)):
+            return
+        # Le dossier a ete refuse. On ouvre le document, et on le dit : le
+        # journal garde la trace du refus, sans quoi personne ne saurait
+        # pourquoi c'est le PDF qui s'affiche et non l'explorateur.
+        QDesktopServices.openUrl(QUrl.fromLocalFile(document))
+        self.log(tr("open_folder_failed", self.lang, path=folder))
 
     def release_canvas(self):
         """Rend le canevas : outil relache et repere retire."""

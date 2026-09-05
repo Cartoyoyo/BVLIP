@@ -3,6 +3,495 @@
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le
 plugin la [gestion sémantique de version](https://semver.org/lang/fr/).
 
+## [Non publié]
+
+### Ajouté
+
+- **Douze zonages environnementaux, avec leur surface dans le bassin et leur
+  part de celui-ci.** ZNIEFF de type I et II, Natura 2000 au titre des
+  habitats (ZSC) et des oiseaux (ZPS), arrêtés de protection de biotope,
+  réserves naturelles nationales et régionales, parcs naturels régionaux,
+  sites Ramsar, zones humides et tourbières de la BCAE 2, zones vulnérables
+  aux nitrates et zones sensibles à l'eutrophisation.
+
+  Les surfaces **ne s'additionnent pas**, et c'est le point qu'il fallait
+  traiter avant tout le reste. Une ZNIEFF de type I est presque toujours
+  incluse dans une ZNIEFF de type II, une ZSC et une ZPS se superposent sur
+  les mêmes vallées : sommer les douze lignes annoncerait couramment plus de
+  100 % d'un bassin. Le total est donc une **union géométrique**, calculée
+  comme telle, et c'est la seule valeur du tableau qui se compare à la
+  surface. Sur le bassin d'essai de la Montagne bourbonnaise : 7,4 % de
+  ZNIEFF I, 23,6 % de ZNIEFF II, 3,7 % de ZSC, 0,9 % d'arrêté de biotope et
+  39,0 % de parc naturel régional, pour un total sans double compte de
+  100 % — la somme des lignes en aurait annoncé 175.
+
+  Un zonage absent du bassin rend une case vide et non un zéro : la case vide
+  se distingue ainsi d'une couche qui n'aurait pas répondu. C'est le total, à
+  zéro, qui atteste que le calcul a bien eu lieu.
+
+  Le classeur porte le détail site par site — nom, code INPN ou Sandre,
+  surface dans le bassin, lien vers la fiche. Un rapport qui annonce 23,6 %
+  de ZNIEFF de type II sans dire laquelle n'est pas vérifiable ; sur ce
+  bassin, c'est « BOIS NOIRS - MONTS DE LA MADELEINE ».
+
+- **Obstacles à l'écoulement du ROE et sites hydrométriques du Sandre.**
+  Nombre d'ouvrages, nombre encore existants, nombre classés Grenelle, nombre
+  équipés d'une passe à poissons, hauteur de chute cumulée et maximale,
+  densité au kilomètre de cours d'eau, et le relevé complet dans le classeur.
+  Ce qui fragmente le linéaire explique un régime perturbé autant que la
+  pente, et cela se compte au lieu de s'estimer. Sur le bassin d'essai :
+  68 ouvrages sur 120 km de cours d'eau, dont 2 équipés d'une passe.
+
+  La hauteur cumulée est **reconstituée**, et le rapport le dit. Le
+  référentiel ne renseigne la hauteur exacte que sur une minorité d'ouvrages ;
+  ailleurs il ne donne qu'une classe — « de 1,5 m à inférieure à 2 m » — dont
+  le milieu est retenu, la provenance étant portée ouvrage par ouvrage dans
+  le classeur. Les ouvrages sans hauteur ni classe ne comptent pour rien : la
+  somme est un minorant. Le type d'ouvrage reste affiché en code Sandre brut,
+  sa nomenclature n'étant servie ni par le WFS ni par l'API du Sandre : un
+  code se vérifie, un libellé inventé ne se vérifierait pas.
+
+- **Masse d'eau souterraine et hydroécorégions de niveau 1 et 2.** La nappe
+  répond à une autre question que la masse d'eau de surface déjà présente : un
+  bassin versant topographique ne coïncide pas avec son bassin
+  hydrogéologique, d'autant moins qu'il est karstique. Les nappes se
+  superposant, c'est celle qui affleure — la moins étendue en surface
+  d'affleurement — qui est retenue, parce que c'est celle qui échange avec le
+  cours d'eau.
+
+  L'hydroécorégion, elle, est le cadre de comparaison de la directive cadre :
+  deux bassins de HER différentes ne se comparent pas. Deux lignes, pour un
+  coût de calcul négligeable.
+
+- **Couvert forestier de la BD Forêt v2**, à 0,5 ha d'unité minimale. Même
+  défaut de Corine Land Cover corrigé que pour le bâti, du côté de la forêt
+  cette fois : CLC ne voit pas un boisement de dix hectares, là où il change
+  l'écoulement.
+
+  Deux totaux sont rendus, et ils ne disent pas la même chose : le couvert
+  comprend les landes et les formations herbacées, la surface boisée ne
+  retient que les peuplements. Le classement se fait sur la typologie en onze
+  classes de l'inventaire, jamais sur l'attribut d'essence — celui-ci descend
+  jusqu'à l'espèce, et trier dessus sous-estimait les conifères d'un facteur
+  dix sur le bassin d'essai, 2,4 % au lieu de 23,4 %.
+
+- **Une option et une étape à elles seules** pour tout ce qui précède, cochée
+  par défaut. C'est l'étape la plus longue du traitement sur un grand bassin :
+  une quinzaine de couches nationales, toutes servies par le réseau.
+
+- **Une huitième couche QGIS : les obstacles à l'écoulement**, un point par
+  ouvrage du ROE. La couleur dit la franchissabilité — passe à poissons, sans
+  passe, non renseigné — et la **taille dit la hauteur de chute**, en
+  propriété calculée plutôt qu'en paliers : la hauteur est continue, et la
+  découper ferait croire à des catégories qui n'existent pas. Sur un secteur
+  de la Besbre, un seuil de quarante centimètres et un barrage de quarante
+  mètres se ressembleraient trait pour trait avec une taille fixe. Chaque
+  point porte son code ROE, son nom, son type, son état, sa chute avec sa
+  **provenance** — mesurée ou déduite de la classe — sa classe, son usage, son
+  classement Grenelle et le cours d'eau barré.
+
+- **La section des obstacles reçoit sa carte elle aussi**, sur sa propre page :
+  les points du ROE posés sur le chevelu, dimensionnés par la hauteur de
+  chute et colorés par la franchissabilité. Le chevelu passe sous les points
+  parce que des obstacles sur fond vide ne diraient rien — c'est le cours
+  d'eau qui donne son sens à leur position, et c'est lui qu'ils barrent.
+
+- **Les couches sont rangées en sous-groupes intitulés** dans le panneau :
+  Hydrographie, Zonages environnementaux, Agriculture, Occupation du sol.
+  Huit couches de même rang ne se retrouvaient plus, et rien ne disait ce qui
+  allait avec quoi. Un sous-groupe qui ne contiendrait qu'une couche de son
+  propre nom se replie sur la couche seule, pour ne pas écrire deux fois
+  « Zonages environnementaux ».
+
+- **La légende passe sous la carte, sur deux colonnes, quand elle est
+  fournie.** Les dix-sept cultures déclarées d'un bassin d'élevage
+  descendaient plus bas que la carte dans la colonne de droite et recouvraient
+  les lignes suivantes. Au-delà de dix entrées, la carte prend toute la
+  largeur et la légende se pose dessous. `setColumnCount` n'y suffisait pas :
+  sans `setSplitLayer`, QGIS garde les entrées d'une même couche dans une
+  seule colonne, et la légende occupait deux colonnes de large en restant
+  aussi haute qu'avant.
+
+- **Les trois sections à carte s'ouvrent chacune sur une page.** Une carte, sa
+  légende et ses tableaux remplissent une page à eux seuls ; les faire
+  commencer au milieu de la précédente ne gagnait que quelques lignes en
+  coupant la carte de ce qu'elle illustre. Les zonages reçoivent la même carte
+  du bassin que l'occupation du sol et l'agriculture.
+
+- **L'agriculture biologique, à la parcelle**, avec sa septième couche QGIS.
+  Surface certifiée et surface en conversion comptées séparément, nombre de
+  parcelles engagées, et la part de la surface déclarée qu'elles représentent.
+  Sur le bassin d'essai : 227 ha certifiés, 133 parcelles, 11,5 % du déclaré.
+
+  Les parcelles engagées forment une couche à part, **hachurée sans fond**,
+  posée au-dessus des parcelles PAC : la hachure marque l'engagement sans
+  effacer la couleur de la culture qui est dessous. C'est bien ce qu'on veut
+  lire — quelle culture, et engagée ou non — et deux couches se décochent
+  séparément. Le certifié et la conversion se distinguent par l'inclinaison
+  des traits : ce qui est acquis penche d'un côté, ce qui est en cours de
+  l'autre.
+
+  **Les MAEC, elles, ne sont pas publiées à la parcelle.** L'engagement en
+  mesure agroenvironnementale est une donnée d'aide individuelle : aucun des
+  trente attributs des couches RPG ne le porte, et seule la Bourgogne-Franche-
+  Comté publie ses territoires PAEC sur la Géoplateforme — des territoires
+  ouverts à la souscription, pas des parcelles engagées. Le bio est ce qui
+  s'en approche le plus dans l'ouvert, et le rapport le dit plutôt que de
+  laisser croire à un relevé des MAEC.
+
+  La couche interrogée porte le numéro PACAGE, qui identifie l'exploitation.
+  Seuls `bio`, `cond_bio`, le code culture et la géométrie sont lus.
+
+- **Une carte thématique en tête des sections Occupation du sol et
+  Agriculture**, avec sa légende. Une section qui n'aligne que des tableaux se
+  lit mal : c'est la carte qui dit où sont les choses, le tableau qui dit
+  combien, et la carte vient en premier — on regarde avant de compter. Celle
+  de l'occupation du sol porte les formations de la BD Forêt, celle de
+  l'agriculture les cultures déclarées. Toutes deux reprennent le fond de plan
+  et le voile extérieur de la page 1, déjà construits.
+
+  Un titre de section réserve désormais la hauteur de sa carte : sans cela,
+  « Agriculture déclarée (PAC) » restait seul en bas de page pendant que sa
+  carte passait à la suivante.
+
+- **Une sixième couche QGIS : les formations de la BD Forêt v2**, un polygone
+  par formation découpé sur le bassin, coloré dans la gamme des verts —
+  feuillus, conifères et mélanges se distinguent au premier coup d'œil, et les
+  landes comme les formations herbacées en sortent, puisque ce ne sont pas des
+  bois.
+
+- **Les intitulés sont raccourcis dans les légendes, jamais dans la donnée.**
+  « Prairie permanente - herbe prédominante (ressources fourragères ligneuses
+  absentes ou peu présentes) » fait cent caractères : en légende de carte il
+  débordait de la page, et dans le panneau des couches il chassait tout le
+  reste. La coupe tombe sur une articulation du libellé plutôt qu'au milieu
+  d'un mot, et les libellés qui se télescoperaient — deux « Surface
+  pastorale » de natures différentes — sont coupés à la longueur pour rester
+  distincts. La valeur de la catégorie, elle, reste entière : c'est elle qui
+  sert au filtrage et à la table attributaire.
+
+- **Une cinquième couche QGIS : les parcelles PAC**, une entité par parcelle
+  anonyme du RPG, découpée sur le bassin et **catégorisée par intitulé de
+  culture**. C'est « Prairie permanente - herbe prédominante » que le panneau
+  des couches affiche, pas « PPH ». Chaque entité porte son code, sa culture,
+  sa catégorie RPG, sa nature — herbe ou culture — sa surface dans le bassin
+  et sa part.
+
+  Une teinte par intitulé, tirée de deux palettes : les verts vont à l'herbe,
+  les tons chauds aux cultures. La carte se lit ainsi avant même qu'on aille
+  chercher la légende — sur la Montagne bourbonnaise, une mosaïque verte d'où
+  ressortent quelques parcelles de triticale et de maïs. Les intitulés sont
+  classés par surface décroissante, pour que la légende s'ouvre sur ce qui
+  domine et que les petites parcelles se posent sur les grandes.
+
+  Les parcelles sont opaques là où les zonages sont translucides : une
+  parcelle n'est déclarée que pour une culture, elles ne se superposent pas,
+  et la transparence ne servirait qu'à délaver la carte. La couche entière
+  garde un léger voile pour laisser voir le fond de plan et le chevelu.
+
+  Le registre public ne porte aucun identifiant d'exploitation, et le plugin
+  n'en lit aucun : ces entités disent ce qui est cultivé, jamais par qui.
+
+- **Un onglet Agricole et une section « Agriculture déclarée (PAC) ».** La
+  source est le Registre parcellaire graphique, c'est-à-dire les parcelles
+  déclarées chaque année au titre de la politique agricole commune. C'est la
+  troisième jambe du même raisonnement que le bâti de la BD TOPO et le couvert
+  de la BD Forêt : Corine ne retient rien sous 25 hectares, et une mosaïque de
+  parcelles lui échappe autant qu'un hameau ou qu'un bosquet.
+
+  Surface déclarée et part du bassin, nombre et taille des parcelles, la
+  répartition du RPG entre terres arables, cultures permanentes et prairies,
+  et les douze premières cultures avec leur libellé — celui que le service
+  publie dans sa table des cent quarante-sept codes, jamais un libellé de
+  notre cru. S'y ajoutent les prairies sensibles de la BCAE et les aires AOC
+  viticoles de l'INAO.
+
+  **L'herbe est distinguée des cultures**, parce que c'est la distinction qui
+  commande la lecture d'un bassin versant : une prairie retient l'eau et le
+  sol là où un labour les laisse partir. Sur le bassin d'essai, 1 863 ha
+  d'herbe pour 121 ha de cultures, soit 93,9 % contre 6,1 % du déclaré.
+
+  Le partage se fait sur le libellé servi, et le choix des termes s'est payé
+  de deux essais. « graminée » attrapait « Graminée pure pour gazon », qui est
+  une culture de semences, et surtout « Autre plante fourragère annuelle (ni
+  légumineuse ni graminée ni céréale) », où le mot apparaît dans une négation.
+  Un rapprochement sur le début du libellé manquait ensuite « Autre prairie
+  temporaire de 5 ans ou moins », et rangeait donc les prairies temporaires
+  avec les cultures. « prairie » et « surface pastorale », cherchés partout,
+  rendent exactement cinq codes sur cent quarante-sept, sans un faux positif.
+
+  Deux réserves sont écrites dans le rapport : le RPG **ne recense que le
+  déclaré** — un exploitant qui ne demande pas d'aide n'y figure pas, la
+  surface est donc un minorant — et sa propre répartition ne recouvre pas
+  celle du rapport, puisqu'il range les prairies temporaires en terres
+  arables. Le numéro PACAGE, qui identifie l'exploitation et figure dans
+  certaines couches du service, n'est jamais lu : le module ne rend que des
+  surfaces agrégées.
+
+- **Une section « Occupation du sol » a part entière, à partir de la page 2.**
+  Classe dominante, couverture atteinte par Corine, les quarante-quatre
+  classes de niveau 3 avec leur surface et leur part, le bâti de la BD TOPO —
+  nombre, emprise au sol, zones d'habitation — puis les deux totaux de la BD
+  Forêt et le détail de ses formations végétales. Ce détail ne vivait que dans
+  le classeur : il fallait l'ouvrir pour savoir ce que recouvraient les
+  cinquante-quatre pour cent de « forêts et milieux semi-naturels » annoncés
+  en page 1.
+
+- **Une note de méthode explique l'écart entre Corine et la BD Forêt.** Les
+  deux chiffres se suivent dans la même section et diffèrent volontiers de dix
+  points : sur le bassin d'essai, 54,4 % de « forêts et milieux semi-naturels »
+  pour Corine contre 62,0 % de peuplements pour la BD Forêt. Sans un mot, le
+  lecteur conclut qu'une des deux sources se trompe, alors qu'elles ne mesurent
+  pas la même chose — l'unité minimale de collecte, 25 ha contre 0,5, et ce que
+  chacune appelle forêt, Corine rangeant landes, pelouses et roches nues avec
+  les bois.
+
+  Deux lignes, pas davantage : la note porte les valeurs du bassin plutôt qu'un
+  discours général, puisque c'est l'écart qu'il a sous les yeux qu'il faut
+  expliquer au lecteur.
+
+- **Plus aucune section de la fiche n'est abandonnée en silence.** La colonne
+  de gauche de la page 1 offre cent trente et un millimètres et les sections
+  en demandent plus du double : celles qui ne tenaient pas étaient jetées,
+  avec toutes celles qui les suivaient, sans un mot. Elles sont désormais
+  reportées sur les pages de détail, à leur place dans l'ordre de la fiche —
+  ce qui venait avant l'occupation du sol reste devant, ce qui venait après
+  reste derrière.
+
+  Celles que les pages de détail reprennent en entier — occupation du sol,
+  zonages, masses d'eau — ne sont pas reportées en plus : ce serait les écrire
+  deux fois, en résumé puis en détail, à quelques centimètres d'écart.
+  `tools/check_fields` vérifie que les titres déclarés comme repris en détail
+  existent bien dans la fiche, un titre mal recopié ne correspondant à rien et
+  laissant la section réapparaître en double sans que personne ne s'en avise.
+
+- **Les zonages figurent sur la carte du rapport, avec leur légende.** Ils
+  passent au-dessus du bassin et sous le chevelu : leurs aplats se liraient
+  mal à travers le bleu du bassin, et ils masqueraient les cours d'eau
+  au-dessus. La légende occupe le coin bas droit de la carte, ancrée par ce
+  coin pour grandir vers le haut à mesure que les zonages sont nombreux, sans
+  jamais déborder ni venir sur la barre d'échelle, qui tient le coin opposé.
+
+  Elle est construite sur un arbre de couches réduit à la seule couche des
+  zonages : la légende automatique de QGIS reprendrait tout le projet de
+  l'utilisateur, fond de plan et couches de travail comprises.
+
+- **La palette des zonages est rabattue et le trait aminci.** Le premier essai
+  — couleurs franches d'écran, aplat à 60 sur 255, contour à 0,5 mm — donnait
+  une carte illisible : vingt-six contours qui se croisent l'emportaient sur
+  le chevelu et sur le fond de plan. Tons rompus, aplat à 30 et trait à
+  0,26 mm : les zonages se lisent sans prendre le pas sur ce qu'ils habillent,
+  et le cumul des transparences continue de signaler les recouvrements.
+
+- **Une quatrième couche QGIS : les zonages environnementaux**, un polygone
+  par site, découpé sur le bassin et coloré selon son type. Les géométries
+  étaient déjà calculées pour en tirer les surfaces ; elles étaient jetées
+  aussitôt. Chaque entité porte son type, sa nature, son nom, son code INPN ou
+  Sandre, sa surface dans le bassin, sa part et le lien vers sa fiche : on
+  clique sur un polygone et on sait de quoi il s'agit.
+
+  Une teinte par zonage, choisie selon la nature plutôt que par hasard : verts
+  pour les inventaires ZNIEFF, bleus et violets pour les protections
+  réglementaires, ocres et rouges pour les pressions subies. Qui ne connaît
+  pas les sigles voit déjà de quel ordre relève chaque polygone.
+
+  Aplat translucide et contour plein, parce que les zonages se superposent par
+  nature — sur la Besbre, une ZNIEFF de type I, une de type II, une ZSC et un
+  parc naturel régional couvrent le même versant. Un aplat opaque n'en
+  montrerait qu'un ; là, le cumul des transparences signale les recouvrements
+  et chaque limite reste lisible sous trois autres polygones.
+
+  Les sites sont écrits du plus vaste au plus petit, faute de quoi les petits
+  disparaîtraient sous les grands : QGIS dessine dans l'ordre d'arrivée et la
+  dernière entité passe au-dessus. Sur la Besbre, la zone sensible à
+  l'eutrophisation couvre cent pour cent du bassin et aurait masqué à elle
+  seule les vingt-cinq autres sites. La couche n'est créée que s'il y a des
+  zonages : une couche vide dans le panneau ferait croire à un calcul raté
+  plutôt qu'à un bassin sans zonage.
+
+- **Des pages de détail au rapport, autant qu'il en faut**, portant les
+  zonages et l'eau. La première page ne bouge pas : c'est la fiche du bassin,
+  et elle doit rester comparable d'un bassin à l'autre. Tout ce qui est de
+  longueur variable passe après — les sites de chaque zonage avec leur nom et
+  leur code INPN, les masses d'eau de surface et souterraine au complet, les
+  deux hydroécorégions, le bilan du ROE puis les ouvrages un à un, et les
+  stations hydrométriques.
+
+  Ce qui figurait jusqu'ici dans le seul classeur est donc lisible sans
+  l'ouvrir. Un rapport qui annonce 23,6 % de ZNIEFF de type II sans dire
+  laquelle n'est pas vérifiable ; la page de détail nomme « BOIS NOIRS -
+  MONTS DE LA MADELEINE ».
+
+  **Rien n'est tronqué.** Quand la place manque, une page s'ouvre et le
+  tableau reprend : le bassin d'essai en sort trois, un bassin de deux cents
+  ouvrages en sortirait six. Un rapport coupé laisserait croire qu'on a tout
+  vu, ce qui est pire qu'un rapport long. Trois soins accompagnent la
+  coupure : les en-têtes de colonnes sont redessinés en tête de page suivis
+  de « (suite) », un titre de section ne reste jamais seul en bas de feuille,
+  et une paire intitulé/valeur ne se coupe pas en son milieu. Le nom d'un
+  zonage est rappelé en tête de page quand ses sites débordent, faute de quoi
+  une page commençant au milieu des ZNIEFF ne dirait pas desquelles il
+  s'agit. Chaque page de détail porte sa pagination.
+
+  Les pages ne s'ajoutent que s'il y a de quoi les remplir : une page vide se
+  lirait comme une donnée manquante là où il n'y a rien à dire.
+
+  Éprouvé sur un cas volontairement démesuré — trente zonages de huit sites,
+  cinq cents ouvrages, quarante stations : douze pages de détail, aucune
+  ligne perdue, aucun élément hors de la feuille. Le plafond de relevé des
+  ouvrages passe de quarante à cinq cents, puisque ce n'est plus la mise en
+  page qu'il protège mais la mémoire et la taille du fichier.
+
+- **Les rangées des tableaux de détail prennent la hauteur qu'il leur faut.**
+  Une hauteur figée était le défaut : un nom de site plus long que sa
+  colonne — « TOURBIERES DE LA CROIX DE L'OLIVIER ET DU PLAN DE LAMOUSSIERE,
+  SECTEUR AUVERGNE » tient en soixante-dix-huit caractères pour une colonne
+  qui en loge cinquante — passait à la ligne et venait se poser sur la rangée
+  suivante. Relevé sur la Besbre : trois chevauchements sur la seule page 2.
+  La hauteur se mesure désormais avant de poser quoi que ce soit, et toutes
+  les cellules d'une rangée la partagent.
+
+  La mesure passe par les métriques de la police et non par une largeur
+  moyenne au caractère : dans une colonne de 68 mm, cinquante-deux caractères
+  de bas de casse tiennent sur une ligne quand quarante-huit capitales n'y
+  tiennent déjà plus. Une moyenne se trompe donc dans les deux sens, et se
+  tromper vers le bas fait recouvrir la rangée suivante.
+
+  Elle est faite dix fois plus grande que le rendu, police et colonne
+  agrandies ensemble. À 6,4 points une police fait huit pixels et demi, et le
+  moteur arrondit l'avance de chaque caractère au pixel ; l'erreur
+  s'accumule et gonfle la mesure de cinq pour cent, assez pour croire qu'un
+  libellé déborde alors qu'il tient et laisser une ligne blanche dans le
+  tableau. Mesuré à l'échelle dix, le libellé litigieux tombe de 1,054 à
+  0,950 fois sa colonne, quand le premier vrai deux-lignes est à 1,123.
+
+- **Un i au bout de chaque case du panneau**, dont le survol donne la
+  description de la donnée : ce qui arrive dans la table, d'où cela vient, et
+  la réserve à connaître. C'est ce dernier point qui justifiait l'infobulle
+  plutôt qu'un intitulé plus long — une ZNIEFF est un inventaire et non une
+  protection, une chute du ROE est reconstituée par classes et non mesurée, la
+  BD Forêt rend deux totaux qui ne disent pas la même chose. Vingt-deux
+  descriptions, dans les cinq langues.
+
+### Modifié
+
+- **L'aperçu avant impression tient dans l'écran.** Il s'ouvrait en
+  900 × 1000 pixels sans rien demander à personne. Sur un portable de
+  1366 × 720, la fenêtre débordait de près de trois cents pixels vers le bas :
+  sa barre de défilement et sa navigation de pages tombaient hors de l'écran,
+  et le rapport devenait un document d'une seule page — les suivantes
+  existaient sans qu'on puisse les atteindre. La fenêtre est désormais bornée
+  par l'écran où elle s'ouvre et centrée dessus : 900 × 640 sur ce poste, avec
+  son ascenseur et son compteur de pages sous la main. Le défaut ne se voyait
+  pas sur un grand écran, où la fenêtre tenait.
+
+- **Le panneau entier défile.** Empilé, son contenu demande environ sept
+  cents pixels de haut : l'exutoire, les quatre onglets de données, cinq
+  boutons, la barre d'avancement et le journal. Sur un portable, où le bandeau
+  latéral en offre quatre cents, le bas était tout bonnement hors d'atteinte —
+  le bouton de rapport comme le journal — sans que rien ne signale qu'il
+  existait. Mesuré : à 340 × 420, l'ascenseur ouvre une course de 336 pixels
+  et tout redevient accessible. L'ascenseur horizontal apparaît lui aussi au
+  besoin, plutôt que de laisser un panneau rétréci se faire couper.
+
+  **Le panneau se borne aussi à ce que l'écran montre vraiment.** L'ascenseur
+  ne se déclenche que si Qt voit un débordement, et Qt ne regarde que le
+  dock : tant que le contenu y tient, pas de barre. Or le dock, lui, peut
+  déborder de l'écran sans que Qt s'en émeuve. Relevé sur un poste : écran
+  1366 × 768, fenêtre QGIS maximisée à 1368 × 1023 — trois cents pixels de
+  plus que l'écran, un reste de géométrie d'un autre moniteur que Windows
+  conserve. Le panneau ancré à droite y faisait 789 pixels de haut, dont 267
+  sous le bord bas de l'écran ; son contenu tenait tout juste dans ses 770
+  pixels, donc aucun ascenseur, et un quart du panneau était inatteignable,
+  journal compris. La hauteur est désormais bornée par le bas visible de
+  l'écran, et recalculée dès que le panneau change de bord, se détache ou
+  change d'écran. Détaché, il est en plus remonté dans l'écran s'il en sort.
+  Vérifié ancré à droite, ancré à gauche et flottant : zéro pixel hors champ,
+  ascenseur présent, tout le contenu accessible.
+
+- **Le panneau ne propose plus quatre cases mais un catalogue de vingt-deux
+  données, rangées en quatre onglets** — Bassin, Sol, Zonages, Eau. On coche
+  ce qu'on veut rapatrier, donnée par donnée : les seuls arrêtés de protection
+  de biotope, ou Natura 2000 sans les ZNIEFF, ou rien du tout.
+
+  Le gain n'est pas cosmétique. Sur le bassin d'essai, tout cocher demande
+  52 s au réseau ; ne demander que ZSC, ZPS et le ROE en demande 2. Les douze
+  zonages sont douze couches nationales interrogées l'une après l'autre, et
+  celui qui n'a besoin que de Natura 2000 n'a plus à payer les onze autres.
+  Vérifié champ par champ : la sélection restreinte remplit 28 champs contre
+  71, sans qu'aucun champ non demandé n'apparaisse.
+
+  Les onglets étaient nécessaires : vingt-deux cases à la suite font un
+  panneau qu'on parcourt à la molette et où l'on ne trouve rien. Les zonages
+  sont à eux seuls la moitié de la liste, ce qui justifiait de les isoler.
+  Deux boutons **Tout cocher** et **Tout décocher** portent sur l'onglet
+  affiché et non sur la liste entière — appliqués aux vingt-deux cases, ils
+  effaceraient sans le montrer un choix fait dans un autre onglet. Un compteur
+  rappelle en permanence combien de données sont retenues sur le total, faute
+  de quoi un onglet replié pourrait cacher une case décochée et le rapport
+  arriverait amputé sans que rien ne l'ait annoncé.
+
+- **Un catalogue unique, `core/datasets`**, dont le panneau tire ses onglets et
+  ses cases, les réglages ce qu'ils conservent, l'algorithme Processing sa
+  liste à choix multiple et le pipeline ce qu'il doit exécuter. Ajouter une
+  donnée se fait à un seul endroit. `tools/check_fields` vérifie que le
+  catalogue et la table des zonages interrogés ne divergent pas — une clé
+  ajoutée d'un côté et oubliée de l'autre donnerait une case qui ne rapatrie
+  rien, défaut qui ne se verrait qu'à l'usage. `tools/check_i18n` sait
+  désormais que ces intitulés sont composés et non écrits en toutes lettres.
+
+- **L'algorithme Processing troque ses cinq cases contre une seule liste à
+  choix multiple**, alimentée par le même catalogue. `METRICS`, `WATER_BODY`,
+  `LAND_COVER`, `ENVIRONMENT` et `REFINE` disparaissent au profit de
+  `DATASETS` : un modèle Processing qui les nommait est à reprendre.
+
+- **Un module d'accès au Sandre**, `core/sandre`, pendant de `core/geoservices`
+  pour la Géoplateforme. Le WFS 1.1 sans GeoJSON, le filtre par emprise à
+  déclarer dans l'URI, l'absence de filtre attributaire côté serveur : tout
+  cela se sait à un seul endroit désormais. `core/waterbody` s'y adosse au lieu
+  de porter son propre client.
+
+- **Le graphique des temps de concentration cède la place** à celui de la
+  couverture des zonages, en barres horizontales — les libellés sont longs et
+  se lisent à plat.
+
+- **La ligne des sources du rapport** tient sur deux lignes et s'arrête avant
+  la mention de droite : allongée des zonages et des référentiels Sandre, elle
+  venait se poser sur « Produit par BVLIP ».
+
+### Corrigé
+
+- **L'occupation du sol avait disparu de la fiche.** Les trois lignes ajoutées
+  à cette section — surface boisée, feuillus, conifères — l'ont fait passer de
+  sept à dix lignes, soit quarante et un millimètres pour trente virgule huit
+  restants : elle ne tenait plus, et le garde de la page 1 l'abandonnait avec
+  tout ce qui la suivait. Elle tenait auparavant à six dixièmes de millimètre
+  près. Le report sur les pages de détail règle la cause, et pas seulement ce
+  cas.
+
+- **Une valeur trop longue ne recouvre plus les deux lignes suivantes sur la
+  page 1.** Le tableau y est à pas fixe, et la dénomination d'une masse d'eau
+  — « LA BESBRE DEPUIS LA RETENUE DE SAINT-CLEMENT JUSQU'A LA CONFLUENCE AVEC
+  LE BARBENAN » — tenait sur trois lignes dans vingt-six millimètres, effaçant
+  la surface du bassin versant et la catégorie Sandre. Le défaut était
+  antérieur aux zonages : il ne se voyait pas tant que la section des masses
+  d'eau était repoussée hors de la page. Les valeurs sont désormais coupées à
+  ce que leur colonne peut montrer, la mesure décidant de la coupe et non le
+  nombre de caractères. Le nom entier reste dans la table attributaire et sur
+  la page de détail.
+
+### Retiré
+
+- **Les temps de concentration**, avec les quatre formules qui les portaient —
+  Kirpich, Giandotti, Passini, Ventura — leurs cinq champs, leur graphique de
+  comparaison et leur ligne dans le rapport.
+
+  Elles étaient employées hors de leur domaine sur la plupart des bassins et
+  divergeaient volontiers d'un facteur deux ; c'est leur dispersion qui
+  renseignait, jamais une valeur isolée. Un ordre de grandeur qui varie du
+  simple au double n'aide personne à décider, et la place est mieux occupée
+  par des données mesurées. Elles ne reviendront pas.
+
 ## [0.9.2] - 2026-09-04
 
 ### Ajouté

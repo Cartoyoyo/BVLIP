@@ -16,13 +16,15 @@ from qgis.core import (
     QgsCoordinateTransform, QgsCoordinateReferenceSystem, QgsFeature,
     QgsFeatureSink, QgsField, QgsFields, QgsGeometry, QgsPointXY,
     QgsProcessing, QgsProcessingAlgorithm, QgsProcessingException,
-    QgsProcessingParameterBoolean, QgsProcessingParameterFeatureSink,
+    QgsProcessingParameterBoolean, QgsProcessingParameterEnum,
+    QgsProcessingParameterFeatureSink,
     QgsProcessingParameterFeatureSource, QgsProcessingParameterNumber,
     QgsProject, QgsWkbTypes,
 )
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
 from qgis.PyQt.QtGui import QIcon
 
+from ..core import datasets as catalogue
 from ..core import results
 from ..core.pipeline import PipelineOptions, run as run_pipeline
 
@@ -38,16 +40,34 @@ class DelineateWatershedAlgorithm(QgsProcessingAlgorithm):
     RESOLUTION = "RESOLUTION"
     SIMPLIFY_CELLS = "SIMPLIFY_CELLS"
     THRESHOLD = "THRESHOLD"
-    METRICS = "METRICS"
-    WATER_BODY = "WATER_BODY"
-    LAND_COVER = "LAND_COVER"
-    REFINE = "REFINE"
+    DATASETS = "DATASETS"
     OVERSIZE = "OVERSIZE"
     OUTPUT = "OUTPUT"
     OUTPUT_OUTLETS = "OUTPUT_OUTLETS"
 
     def tr(self, text):
         return QCoreApplication.translate("BVLIP", text)
+
+    @staticmethod
+    def _dataset_labels():
+        """Intitules de la liste, dans l'ordre du catalogue.
+
+        Ils portent le nom de leur onglet en tete faute de pouvoir les
+        regrouper : Processing ne connait qu'une liste plate, et "ZNIEFF de
+        type I" seul ne dirait pas de quelle famille il releve une fois pose
+        au milieu des vingt et un autres.
+
+        Les libelles ne passent pas par i18n : Processing traduit par son
+        propre mecanisme, celui de Qt, et melanger les deux rendrait la
+        chaine intraduisible d'un cote comme de l'autre.
+        """
+        return ["{0} - {1}".format(tab, key)
+                for key, tab, _on in catalogue.DATASETS]
+
+    @staticmethod
+    def _dataset_defaults():
+        return [index for index, (_key, _tab, on)
+                in enumerate(catalogue.DATASETS) if on]
 
     def createInstance(self):  # noqa: N802 (API QGIS)
         return DelineateWatershedAlgorithm()
@@ -129,23 +149,15 @@ class DelineateWatershedAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterNumber.Type.Integer, defaultValue=200,
             minValue=10, maxValue=100000,
         ))
-        self.addParameter(QgsProcessingParameterBoolean(
-            self.METRICS, self.tr("Calculer les caracteristiques du bassin"),
-            defaultValue=True,
-        ))
-        self.addParameter(QgsProcessingParameterBoolean(
-            self.WATER_BODY, self.tr("Identifier la masse d'eau DCE"),
-            defaultValue=True,
-        ))
-        self.addParameter(QgsProcessingParameterBoolean(
-            self.LAND_COVER, self.tr("Analyser l'occupation du sol"),
-            defaultValue=True,
-        ))
-        self.addParameter(QgsProcessingParameterBoolean(
-            self.REFINE,
-            self.tr("Recalculer a la maille la plus fine (deux fois plus "
-                    "long, sans effet sur la surface)"),
-            defaultValue=False,
+        # Une seule liste a choix multiple plutot que vingt-deux cases :
+        # le panneau les range en onglets, ce que Processing ne sait pas
+        # faire, et vingt-deux booleens dans un modele seraient illisibles.
+        # L'ordre et les defauts sont ceux du catalogue, si bien qu'une
+        # donnee ajoutee apparait ici sans qu'on y touche.
+        self.addParameter(QgsProcessingParameterEnum(
+            self.DATASETS, self.tr("Donnees a rapatrier"),
+            options=self._dataset_labels(), allowMultiple=True,
+            defaultValue=self._dataset_defaults(),
         ))
         self.addParameter(QgsProcessingParameterBoolean(
             self.OVERSIZE,
@@ -181,10 +193,10 @@ class DelineateWatershedAlgorithm(QgsProcessingAlgorithm):
             ),
             simplify_cells=self.parameterAsDouble(parameters, self.SIMPLIFY_CELLS, context),
             stream_threshold=self.parameterAsInt(parameters, self.THRESHOLD, context),
-            with_metrics=self.parameterAsBool(parameters, self.METRICS, context),
-            with_water_body=self.parameterAsBool(parameters, self.WATER_BODY, context),
-            with_land_cover=self.parameterAsBool(parameters, self.LAND_COVER, context),
-            refine=self.parameterAsBool(parameters, self.REFINE, context),
+            datasets=[
+                catalogue.KEYS[index] for index in self.parameterAsEnums(
+                    parameters, self.DATASETS, context)
+            ],
             allow_oversize=self.parameterAsBool(
                 parameters, self.OVERSIZE, context),
         )
@@ -255,6 +267,8 @@ class DelineateWatershedAlgorithm(QgsProcessingAlgorithm):
                 result["delineation"], result["network"], point,
                 result["metrics"], result["water_body"], basin_id,
                 result["land_cover"], result.get("affinage"),
+                result.get("protected"), result.get("structures"),
+                result.get("groundwater"), result.get("hydroecoregion"),
             )
             sink.addFeature(
                 results.basin_feature(

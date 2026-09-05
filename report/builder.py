@@ -13,6 +13,7 @@ classeur, tous deux autonomes, restent a l'endroit choisi par l'utilisateur.
 import os
 import shutil
 import tempfile
+from contextlib import contextmanager
 
 from qgis.core import QgsLayoutExporter, QgsProject
 from qgis.PyQt.QtCore import QRectF, QSize
@@ -82,6 +83,58 @@ def _map_image(layout, path, dpi=150):
     return path if image.save(path, "PNG") else None
 
 
+@contextmanager
+def prepared_layout(result, layers, progress=None):
+    """Monte la page A4 du bassin, la tient le temps qu'on s'en serve, puis
+    fait le menage.
+
+    Deux usages la demandent : l'export du rapport et l'apercu avant
+    impression. Elle est donc montee ici une fois pour toutes, plutot que dans
+    chacun d'eux - c'est la seule facon de garantir que ce qui s'affiche a
+    l'ecran est exactement ce qui sortira du PDF.
+
+    Rend (mise en page, valeurs du bassin, chemins des graphiques, repertoire
+    de travail). Le menage a la sortie porte sur les couches de service -
+    masque, fond de plan - qui encombreraient le projet, et sur les fichiers
+    intermediaires, qui n'ont plus de lecteur.
+    """
+    def report(message):
+        if progress is not None:
+            progress(message)
+
+    values = _values_of(layers)
+    workdir = tempfile.mkdtemp(prefix="bvlip_rapport_")
+    project = QgsProject.instance()
+    temporary = []
+    try:
+        report("Graphiques...")
+        charts_paths = charts.build_all(
+            result.get("metrics"), result.get("land_cover"), workdir,
+            relief=result.get("relief"), protected=result.get("protected"),
+        )
+        report("Mise en page A4...")
+        page, temporary = layout_module.build_layout(
+            project, layers, values, charts_paths,
+            title=_title_of(values), subtitle=_subtitle_of(values),
+            # La seconde page vit de listes, que la table du bassin ne peut
+            # pas porter : elle les prend directement dans le resultat.
+            details={
+                "land_cover": result.get("land_cover"),
+                "agriculture": result.get("agriculture"),
+                "protected": result.get("protected"),
+                "structures": result.get("structures"),
+                "water_body": result.get("water_body"),
+                "groundwater": result.get("groundwater"),
+                "hydroecoregion": result.get("hydroecoregion"),
+            },
+        )
+        yield page, values, charts_paths, workdir
+    finally:
+        for layer in temporary:
+            project.removeMapLayer(layer.id())
+        shutil.rmtree(workdir, ignore_errors=True)
+
+
 def build_report(result, layers, pdf_path, with_workbook=True, progress=None):
     """Produit le rapport du bassin et renvoie les chemins ecrits.
 
@@ -92,23 +145,9 @@ def build_report(result, layers, pdf_path, with_workbook=True, progress=None):
         if progress is not None:
             progress(message)
 
-    values = _values_of(layers)
-    title = _title_of(values)
-    subtitle = _subtitle_of(values)
+    with prepared_layout(result, layers, progress) as prepared:
+        page, values, charts_paths, workdir = prepared
 
-    workdir = tempfile.mkdtemp(prefix="bvlip_rapport_")
-    report("Graphiques...")
-    charts_paths = charts.build_all(
-        result.get("metrics"), result.get("land_cover"), workdir
-    )
-
-    report("Mise en page A4...")
-    project = QgsProject.instance()
-    page, temporary = layout_module.build_layout(
-        project, layers, values, charts_paths, title=title, subtitle=subtitle
-    )
-
-    try:
         report("Export PDF...")
         layout_module.export_pdf(page, pdf_path)
 
@@ -119,14 +158,9 @@ def build_report(result, layers, pdf_path, with_workbook=True, progress=None):
             xlsx_path = os.path.splitext(pdf_path)[0] + ".xlsx"
             produced["xlsx"] = excel.build_workbook(
                 values, result.get("land_cover"), layers.get("reseau"),
-                charts_paths, map_png, xlsx_path, title, subtitle,
+                charts_paths, map_png, xlsx_path,
+                _title_of(values), _subtitle_of(values),
+                protected=result.get("protected"),
+                structures=result.get("structures"),
             )
         return produced
-    finally:
-        # Les couches de service (masque, fond de plan) n'ont de sens que
-        # pendant l'export : les laisser encombrerait le projet.
-        for layer in temporary:
-            project.removeMapLayer(layer.id())
-        # Idem pour les graphiques et l'image de carte : ils sont deja dans
-        # le PDF et le classeur, leurs fichiers n'ont plus de lecteur.
-        shutil.rmtree(workdir, ignore_errors=True)

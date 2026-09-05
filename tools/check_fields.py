@@ -144,6 +144,89 @@ def check(name, entries):
     return problems
 
 
+def read_list(module, name, column=0):
+    """Colonne d'une table declaree en tete d'un module, sans l'importer."""
+    path = os.path.join(PLUGIN_DIR, *module.split("/"))
+    with open(path, encoding="utf-8") as handle:
+        tree = ast.parse(handle.read())
+    for node in tree.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        target = node.targets[0]
+        if isinstance(target, ast.Name) and target.id == name:
+            return [element.elts[column].value for element in node.value.elts]
+    return []
+
+
+def check_zonage_keys():
+    """Le catalogue et la table des zonages doivent nommer les memes couches.
+
+    Elles vivent dans deux modules - core/datasets pour ce qui se coche,
+    core/protected pour ce qui s'interroge - et rien dans le code ne les
+    relie : une cle ajoutee d'un cote et oubliee de l'autre donnerait une
+    case qui ne rapatrie rien, ou une couche qu'aucune case ne commande.
+    Le defaut ne se verrait qu'a l'usage, sur un rapport incomplet.
+    """
+    catalogue = [key for key, tab, _on
+                 in zip(read_list("core/datasets.py", "DATASETS", 0),
+                        read_list("core/datasets.py", "DATASETS", 1),
+                        read_list("core/datasets.py", "DATASETS", 2))
+                 if tab == "zonages"]
+    declared = read_list("core/protected.py", "ZONAGES", 0)
+    problems = []
+    for key in sorted(set(catalogue) - set(declared)):
+        problems.append(
+            "  {0} : proposee au catalogue, absente de protected.ZONAGES"
+            .format(key))
+    for key in sorted(set(declared) - set(catalogue)):
+        problems.append(
+            "  {0} : interrogee par protected, absente du catalogue"
+            .format(key))
+    if catalogue != declared and not problems:
+        problems.append(
+            "  l'ordre des zonages differe entre le catalogue et protected")
+    return problems, len(declared)
+
+
+def read_strings(module, name):
+    """Suite de chaines declarees en tete d'un module."""
+    path = os.path.join(PLUGIN_DIR, *module.split("/"))
+    with open(path, encoding="utf-8") as handle:
+        tree = ast.parse(handle.read())
+    for node in tree.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        target = node.targets[0]
+        if isinstance(target, ast.Name) and target.id == name:
+            return [e.value for e in node.value.elts
+                    if isinstance(e, ast.Constant)]
+    return []
+
+
+def check_detailed_sections():
+    """DETAILED_SECTIONS doit nommer des sections qui existent vraiment.
+
+    La mise en page s'en sert pour ne pas ecrire deux fois une section : une
+    fois en resume reporte de la page 1, une fois en detail. Un titre mal
+    recopie ne leve aucune erreur - il ne correspond simplement a rien, et la
+    section reapparait en double sans que personne ne s'en avise.
+    """
+    path = os.path.join(PLUGIN_DIR, "core", "results.py")
+    with open(path, encoding="utf-8") as handle:
+        tree = ast.parse(handle.read())
+    titres = []
+    for node in tree.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        target = node.targets[0]
+        if isinstance(target, ast.Name) and target.id == "REPORT_SECTIONS":
+            titres = [e.elts[0].value for e in node.value.elts]
+    detaillees = read_strings("core/results.py", "DETAILED_SECTIONS")
+    manquants = [t for t in detaillees if t not in titres]
+    return ["  {0!r} : reprise en detail, absente de REPORT_SECTIONS".format(t)
+            for t in manquants], len(detaillees)
+
+
 def main():
     tables = read_tables()
     if not tables:
@@ -165,6 +248,24 @@ def main():
                 "({2} seront tronques a l'export Shapefile, sans "
                 "collision).".format(name, len(entries), longs)
             )
+
+    problems, total = check_detailed_sections()
+    if problems:
+        failed = True
+        print("Sections detaillees : {0} probleme(s)".format(len(problems)))
+        print("\n".join(problems))
+    else:
+        print("Sections detaillees : {0} titres, tous presents dans "
+              "REPORT_SECTIONS.".format(total))
+
+    problems, total = check_zonage_keys()
+    if problems:
+        failed = True
+        print("Zonages : {0} probleme(s)".format(len(problems)))
+        print("\n".join(problems))
+    else:
+        print("Zonages : {0} cles, catalogue et protected d'accord."
+              .format(total))
     return 1 if failed else 0
 
 

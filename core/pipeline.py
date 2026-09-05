@@ -15,7 +15,11 @@ import shutil
 import tempfile
 import time
 
-from . import dem, delineation, landcover, metrics, network, waterbody
+from . import (
+    agriculture, dem, delineation, landcover, metrics, network, obstacles,
+    protected, relief, waterbody,
+)
+from . import datasets as catalogue
 from .delineation import CONTAINMENT_MIN
 
 # Etapes annoncees a la barre de progression. La liste sert aussi de contrat :
@@ -29,20 +33,39 @@ STEPS = (
     "metriques",
     "masse_eau",
     "occupation_sol",
+    "agriculture",
+    "zonages",
+    "obstacles",
 )
 
 # Marge conservee de part et d'autre du bassin grossier lors du recadrage.
-# Elle n'a qu'a absorber le deplacement du contour entre les deux mailles,
-# soit une ou deux mailles grossieres : 50 m en represente deja cinq a une
-# maille de 10 m. La prendre plus large ne rend rien plus sur et gonfle
-# l'emprise, ce qui peut suffire a repasser au-dessus du plafond de memoire et
-# a perdre le benefice du recadrage.
 #
-# Une marge serree n'est pas risquee pour autant : si le contour fin affleure
-# le bord du recadrage, on le detecte et on recommence plus large.
-REFINE_MARGIN = 50.0
+# Elle n'a qu'a absorber le deplacement du contour entre les deux mailles, ce
+# qui tient en une ou deux mailles grossieres : cinquante metres en
+# representent cinq a une maille de 10 m, et suffisaient donc en theorie.
+#
+# A l'usage, non. Sur la Besbre a Diou - 151 km2, recadres a 50 m de marge -
+# le contour fin est venu affleurer le bord, et tout l'affinage a ete refait a
+# 200 m de marge pour rendre exactement le meme bassin : 151,198 km2 et
+# 74 042 m de perimetre dans les deux cas, au metre pres, meme exutoire, memes
+# 6 047 818 mailles drainees. Cent douze secondes sur trois cent dix-neuf, a
+# retrouver ce qu'on avait deja.
+#
+# D'ou deux cents metres d'emblee. Le cout se lit sur la meme trace : 318 km2
+# d'emprise au lieu de 307, soit 12,7 Mpx contre 12,3 - environ trois
+# secondes. Le risque note ci-dessous reste reel, une emprise plus vaste
+# pouvant repasser au-dessus du plafond de memoire et faire renoncer a
+# l'affinage, mais trois pour cent ne decident de rien, la ou une reprise
+# complete coute la moitie du calcul.
+#
+# Une marge trop serree n'est pas fausse pour autant : si le contour fin
+# affleure le bord du recadrage, on le detecte et on recommence plus large.
+# C'est le prix de cette reprise, pas son existence, qu'on cherche a eviter.
+REFINE_MARGIN = 200.0
 
 # Facteur d'elargissement quand le contour fin affleure le bord du recadrage.
+# Porte la marge a 800 m, ce qui ne devrait plus arriver qu'exceptionnellement
+# depuis que la premiere passe part de 200 m.
 REFINE_MARGIN_GROWTH = 4.0
 
 # Prefixe des repertoires de travail. Il sert aussi au balayage des oublis :
@@ -70,33 +93,59 @@ _PENDING = set()
 
 class PipelineOptions:
     """Reglages du traitement, avec des valeurs par defaut utilisables telles
-    quelles sur un bassin de quelques kilometres carres."""
+    quelles sur un bassin de quelques kilometres carres.
+
+    Ce qui est rapatrie et ce qui est calcule tient dans un seul ensemble de
+    cles, decrit par core.datasets. Le panneau, les reglages et l'algorithme
+    Processing s'accordent ainsi sans se recopier, et une donnee ajoutee au
+    catalogue devient choisissable partout d'un coup.
+
+    datasets a None vaut la selection par defaut, c'est-a-dire tout sauf
+    l'affinage : un script qui appelle le pipeline sans s'occuper du detail
+    obtient un bassin complet.
+    """
 
     def __init__(self, snap_radius=50.0, thalweg_radius=50.0, resolution=None,
                  simplify_cells=2.0, stream_threshold=200,
-                 with_metrics=True, with_water_body=True,
-                 with_land_cover=True, water_body_details=False,
-                 max_pixels=None, refine=False,
-                 refine_margin=REFINE_MARGIN, workdir=None,
+                 datasets=None, water_body_details=False,
+                 max_pixels=None, refine_margin=REFINE_MARGIN, workdir=None,
                  allow_oversize=False):
         self.snap_radius = snap_radius
         self.thalweg_radius = thalweg_radius
         # None : la maille s'ajuste a l'emprise et a la memoire disponible.
         self.resolution = resolution
         self.max_pixels = max_pixels
-        # refine : seconde passe sur le bassin recadre, a maille plus fine.
-        self.refine = refine
         self.refine_margin = refine_margin
         self.simplify_cells = simplify_cells
         self.stream_threshold = stream_threshold
-        self.with_metrics = with_metrics
-        self.with_water_body = with_water_body
-        self.with_land_cover = with_land_cover
+        self.datasets = catalogue.normalise(datasets)
         self.water_body_details = water_body_details
         self.workdir = workdir
         # Leve le garde-fou d'emprise du reseau amont. Ne se met a True que
         # sur demande explicite : voir network.OversizeBasinError.
         self.allow_oversize = allow_oversize
+
+    def wants(self, *keys):
+        """L'une au moins de ces donnees est-elle demandee ?"""
+        return any(key in self.datasets for key in keys)
+
+    def chosen(self, keys):
+        """Sous-ensemble demande parmi les cles proposees, dans leur ordre."""
+        return tuple(key for key in keys if key in self.datasets)
+
+    @property
+    def refine(self):
+        """Seconde passe sur le bassin recadre, a maille plus fine.
+
+        Expose a part parce que la delimitation la lit comme un reglage et
+        non comme une donnee a rapatrier ; elle se coche pourtant au meme
+        endroit que le reste.
+        """
+        return "affinage" in self.datasets
+
+    @property
+    def with_metrics(self):
+        return "metriques" in self.datasets
 
 
 def _discard(path):
@@ -254,9 +303,15 @@ def _run(x, y, options, progress, feedback, cancelled, resume):
         "delineation": delineation_result,
         "metrics": None,
         "water_body": None,
+        "groundwater": None,
+        "hydroecoregion": None,
         "land_cover": None,
+        "agriculture": None,
+        "protected": None,
+        "structures": None,
         "avertissements": [],
         "affinage": None,
+        "relief": None,
     }
 
     # Deux facons de rendre un bassin tronque sans que rien ne le signale.
@@ -304,6 +359,23 @@ def _run(x, y, options, progress, feedback, cancelled, resume):
     if stop():
         return result
 
+    # Le relief est preleve ici, et pas plus tard : le MNT part avec le
+    # repertoire de travail des la sortie de cette fonction, et les vues en
+    # trois dimensions sont demandees longtemps apres. Quelques centaines de
+    # kilooctets suffisent a les servir - voir core.relief.
+    try:
+        result["relief"] = relief.extract(
+            dem_info, delineation_result["geometry"],
+            upstream=network_result.get("upstream"),
+            outlet=delineation_result["outlet"],
+        )
+    except Exception as exc:      # noqa: BLE001 - le relief est un confort
+        result["relief"] = None
+        result["avertissements"].append(
+            "Relief non conserve, les vues en relief ne seront pas "
+            "disponibles : {0}".format(exc)
+        )
+
     # Les trois etapes suivantes sont de l'enrichissement : un service
     # indisponible ne doit pas faire perdre le bassin, deja calcule.
     if options.with_metrics:
@@ -320,30 +392,115 @@ def _run(x, y, options, progress, feedback, cancelled, resume):
     if stop():
         return result
 
-    if options.with_water_body:
-        step(5, "Masse d'eau DCE")
-        try:
-            result["water_body"] = waterbody.find_water_body(
-                *delineation_result["outlet"],
-                detailed=options.water_body_details,
-            )
-        except Exception as exc:
-            result["avertissements"].append(
-                "Masse d'eau non identifiee : {0}".format(exc)
-            )
+    outlet = delineation_result["outlet"]
+    if options.wants("masse_eau", "meso", "her"):
+        step(5, "Masses d'eau et hydroecoregion")
+        # Trois lectures ponctuelles sur le meme service, independantes : une
+        # nappe introuvable ne doit pas emporter la masse d'eau de surface.
+        if options.wants("masse_eau"):
+            try:
+                result["water_body"] = waterbody.find_water_body(
+                    *outlet, detailed=options.water_body_details,
+                )
+            except Exception as exc:
+                result["avertissements"].append(
+                    "Masse d'eau non identifiee : {0}".format(exc)
+                )
+        if options.wants("meso"):
+            try:
+                step(5, "Masse d'eau souterraine")
+                result["groundwater"] = waterbody.find_groundwater(*outlet)
+            except Exception as exc:
+                result["avertissements"].append(
+                    "Masse d'eau souterraine non identifiee : {0}".format(exc)
+                )
+        if options.wants("her"):
+            try:
+                step(5, "Hydroecoregion")
+                result["hydroecoregion"] = waterbody.find_hydroecoregion(
+                    *outlet)
+            except Exception as exc:
+                result["avertissements"].append(
+                    "Hydroecoregion non identifiee : {0}".format(exc)
+                )
     if stop():
         return result
 
-    if options.with_land_cover:
+    if options.wants("corine", "bati", "foret"):
         step(6, "Occupation du sol")
         try:
             result["land_cover"] = landcover.compute(
                 delineation_result["geometry"],
+                with_corine=options.wants("corine"),
+                with_built_up=options.wants("bati"),
+                with_forest=options.wants("foret"),
                 progress=lambda m: step(6, m),
             )
         except Exception as exc:
             result["avertissements"].append(
                 "Occupation du sol non etablie : {0}".format(exc)
+            )
+    if stop():
+        return result
+
+    if options.wants("rpg", "bio", "prairies", "aoc"):
+        step(7, "Agriculture declaree")
+        try:
+            result["agriculture"] = agriculture.compute(
+                delineation_result["geometry"],
+                with_rpg=options.wants("rpg"),
+                with_bio=options.wants("bio"),
+                with_prairies=options.wants("prairies"),
+                with_aoc=options.wants("aoc"),
+                progress=lambda m: step(7, m),
+            )
+            for message in result["agriculture"].get("erreurs") or ():
+                result["avertissements"].append(message)
+        except Exception as exc:
+            result["avertissements"].append(
+                "Agriculture non etablie : {0}".format(exc)
+            )
+    if stop():
+        return result
+
+    wanted_zonages = options.chosen(catalogue.ZONAGE_KEYS)
+    if wanted_zonages:
+        step(8, "Zonages environnementaux")
+        try:
+            result["protected"] = protected.compute(
+                delineation_result["geometry"], keys=wanted_zonages,
+                progress=lambda m: step(8, m),
+            )
+            for message in result["protected"].get("erreurs") or ():
+                result["avertissements"].append(
+                    "Zonage non interroge : {0}".format(message)
+                )
+        except Exception as exc:
+            result["avertissements"].append(
+                "Zonages environnementaux non etablis : {0}".format(exc)
+            )
+    if stop():
+        return result
+
+    if options.wants("roe", "hydrometrie"):
+        step(9, "Obstacles a l'ecoulement")
+        try:
+            # La densite d'obstacles se rapporte au lineaire de la BD TOPO
+            # dans le bassin, calcule a l'etape des metriques. Sans elle, le
+            # nombre reste juste et seule la densite manque.
+            values = result.get("metrics") or {}
+            result["structures"] = obstacles.compute(
+                delineation_result["geometry"],
+                linear_km=values.get("lineaire_hydro_km"),
+                with_obstacles=options.wants("roe"),
+                with_gauges=options.wants("hydrometrie"),
+                progress=lambda m: step(9, m),
+            )
+            for message in result["structures"].get("erreurs") or ():
+                result["avertissements"].append(message)
+        except Exception as exc:
+            result["avertissements"].append(
+                "Obstacles a l'ecoulement non releves : {0}".format(exc)
             )
 
     return result
@@ -572,4 +729,13 @@ def summary(result):
         dominant = corine["classes"][0]
         lines.append("Occupation dominante : {0} ({1:.0f} %)".format(
             dominant["libelle"], dominant["part_pct"]))
+    zonages = result.get("protected")
+    if zonages and zonages.get("total_pct") is not None:
+        lines.append("Sous zonage environnemental : {0:.0f} % "
+                     "({1} sites)".format(zonages["total_pct"],
+                                          zonages["nb_sites"]))
+    structures = (result.get("structures") or {}).get("roe")
+    if structures:
+        lines.append("Obstacles a l'ecoulement : {0}".format(
+            structures["nb"]))
     return "\n".join(lines)

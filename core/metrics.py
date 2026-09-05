@@ -9,7 +9,6 @@ Conventions d'unites, pour eviter les confusions classiques :
     surfaces    en m2 en interne, exposees aussi en km2
     longueurs   en m en interne, exposees aussi en km
     pentes      en m/m en interne, exposees aussi en %
-    temps       en heures
 """
 
 import math
@@ -295,59 +294,6 @@ def longest_flow_path(drainage_path, mask, outlet_rowcol, cellsize,
     return float(distance[flat]), (far_row, far_col)
 
 
-# ---------------------------------------------------- Temps de concentration
-
-def concentration_times(area_km2, length_km, slope_mm, z_mean, z_min):
-    """Temps de concentration selon quatre formules usuelles, en heures.
-
-    Les formules ne mesurent pas la meme chose et divergent volontiers d'un
-    facteur deux : c'est cet ecart qui renseigne, pas une valeur isolee. Une
-    formule dont les conditions d'application ne sont pas reunies renvoie None
-    plutot qu'un nombre trompeur.
-    """
-    times = {}
-
-    # Kirpich : petits bassins ruraux pentus, formule d'origine en minutes.
-    if length_km > 0 and slope_mm > 0:
-        length_m = length_km * 1000.0
-        times["kirpich_h"] = (
-            0.0195 * (length_m ** 0.77) * (slope_mm ** -0.385) / 60.0
-        )
-    else:
-        times["kirpich_h"] = None
-
-    # Giandotti : usage courant en France, demande une denivelee utile.
-    relief = z_mean - z_min
-    if area_km2 > 0 and relief > 0:
-        times["giandotti_h"] = (
-            (4.0 * math.sqrt(area_km2) + 1.5 * length_km)
-            / (0.8 * math.sqrt(relief))
-        )
-    else:
-        times["giandotti_h"] = None
-
-    # Passini : combine surface et longueur du cheminement.
-    if area_km2 > 0 and length_km > 0 and slope_mm > 0:
-        times["passini_h"] = (
-            0.108 * ((area_km2 * length_km) ** (1.0 / 3.0))
-            / math.sqrt(slope_mm)
-        )
-    else:
-        times["passini_h"] = None
-
-    # Ventura : ne depend que de la surface et de la pente.
-    if area_km2 > 0 and slope_mm > 0:
-        times["ventura_h"] = 0.1272 * math.sqrt(area_km2 / slope_mm)
-    else:
-        times["ventura_h"] = None
-
-    valid = [v for v in times.values() if v is not None]
-    times["min_h"] = min(valid) if valid else None
-    times["max_h"] = max(valid) if valid else None
-    times["moyen_h"] = sum(valid) / len(valid) if valid else None
-    return times
-
-
 # ------------------------------------------------------------- Orchestration
 
 def compute(delineation_result, network_result=None, progress=None):
@@ -448,11 +394,5 @@ def compute(delineation_result, network_result=None, progress=None):
             (linear / 1000.0) / values["surface_km2"]
             if values["surface_km2"] > 0 else None
         )
-
-    report("Temps de concentration...")
-    values["temps_concentration"] = concentration_times(
-        values["surface_km2"], values["long_cheminement_km"],
-        values["pente_moyenne_mm"], values["z_moyen_m"], values["z_min_m"],
-    )
 
     return values

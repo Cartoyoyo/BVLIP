@@ -167,7 +167,8 @@ def _insert_image(sheet, path, anchor, width_px=None, height_px=None):
 
 
 def build_workbook(values, land_cover, streams_layer, charts_paths, map_image,
-                   output_path, title, subtitle):
+                   output_path, title, subtitle, protected=None,
+                   structures=None):
     """Ecrit le classeur et renvoie son chemin, ou None si openpyxl manque."""
     if not available():
         return None
@@ -228,7 +229,7 @@ def build_workbook(values, land_cover, streams_layer, charts_paths, map_image,
         row += 1
 
     # --- Les graphiques, sous le tableau
-    for key in ("hypsometrie", "occupation", "temps"):
+    for key in ("hypsometrie", "occupation", "zonages"):
         path = (charts_paths or {}).get(key)
         if not path:
             continue
@@ -239,8 +240,9 @@ def build_workbook(values, land_cover, streams_layer, charts_paths, map_image,
 
     row += 1
     sheet["A{0}".format(row)] = (
-        "Produit par BVLIP le {0}. Sources : RGE ALTI et BD TOPO (IGN), "
-        "Corine Land Cover 2018, référentiel des masses d'eau Sandre, "
+        "Produit par BVLIP le {0}. Sources : RGE ALTI, BD TOPO et BD Forêt "
+        "v2 (IGN), Corine Land Cover 2018, zonages INPN / Patrinat, "
+        "référentiels Sandre (masses d'eau, hydroécorégions, ROE), "
         "fond de plan IGN v2.".format(
             datetime.now().strftime("%d/%m/%Y à %H:%M"))
     )
@@ -248,6 +250,8 @@ def build_workbook(values, land_cover, streams_layer, charts_paths, map_image,
     _setup_a4(sheet, row)
 
     _sheet_land_cover(book, land_cover, styles)
+    _sheet_protected(book, protected, styles)
+    _sheet_obstacles(book, structures, styles)
     _sheet_streams(book, streams_layer, styles)
 
     book.save(output_path)
@@ -302,7 +306,163 @@ def _sheet_land_cover(book, land_cover, styles):
             sheet["C{0}".format(row + offset)] = value
             sheet["C{0}".format(row + offset)].number_format = fmt
             last_row = row + offset
+
+    # La BD Foret prolonge la meme feuille plutot que d'en ouvrir une : c'est
+    # de l'occupation du sol, mesuree a une autre echelle. Les surfaces ne
+    # s'additionnent pas a celles de CLC, et les tenir cote a cote le rappelle.
+    forest = (land_cover or {}).get("foret") or {}
+    formations = forest.get("formations") or []
+    if formations:
+        row = last_row + 2
+        sheet["A{0}".format(row)] = "Couvert forestier (BD Forêt v2)"
+        sheet["A{0}".format(row)].font = styles["section"]
+        row += 1
+        for column, label in (("B", "Formation végétale"),
+                              ("C", "Surface (ha)"),
+                              ("D", "Part (% du bassin)")):
+            cell = sheet["{0}{1}".format(column, row)]
+            cell.value = label
+            cell.font = styles["section"]
+            cell.fill = styles["band"]
+        row += 1
+        for item in formations:
+            sheet["B{0}".format(row)] = item["libelle"]
+            sheet["C{0}".format(row)] = item["surface_ha"]
+            sheet["C{0}".format(row)].number_format = "0.00"
+            sheet["D{0}".format(row)] = item["part_pct"]
+            sheet["D{0}".format(row)].number_format = "0.0"
+            for column in "BCD":
+                sheet["{0}{1}".format(column, row)].border = styles["rule"]
+            row += 1
+        last_row = row
+
     _setup_a4(sheet, last_row, "D")
+
+
+def _sheet_protected(book, protected, styles):
+    """Detail site par site des zonages environnementaux.
+
+    La page A4 n'en montre que la part du bassin, zonage par zonage. C'est ici
+    qu'on trouve les noms : un rapport qui annonce 34 % de ZNIEFF de type I
+    sans dire lesquelles n'est pas verifiable, et le lien vers la fiche de
+    l'INPN evite d'avoir a les rechercher a la main.
+    """
+    zonages = (protected or {}).get("zonages") or []
+    lignes = [(z, site) for z in zonages for site in z.get("sites") or []]
+    if not lignes:
+        return
+    sheet = book.create_sheet("Zonages environnementaux")
+    sheet.sheet_view.showGridLines = False
+    for column, width in (("A", 30), ("B", 44), ("C", 16), ("D", 14),
+                          ("E", 14), ("F", 40)):
+        sheet.column_dimensions[column].width = width
+
+    for column, label in (("A", "Zonage"), ("B", "Site"),
+                          ("C", "Code INPN / Sandre"),
+                          ("D", "Surface dans le bassin (ha)"),
+                          ("E", "Part (% du bassin)"), ("F", "Fiche")):
+        cell = sheet["{0}1".format(column)]
+        cell.value = label
+        cell.font = styles["section"]
+        cell.fill = styles["band"]
+
+    row = 2
+    for zonage, site in lignes:
+        sheet["A{0}".format(row)] = zonage["libelle"]
+        sheet["B{0}".format(row)] = site["nom"]
+        sheet["C{0}".format(row)] = site["code"]
+        sheet["D{0}".format(row)] = site["surface_ha"]
+        sheet["D{0}".format(row)].number_format = "0.00"
+        sheet["E{0}".format(row)] = site["part_pct"]
+        sheet["E{0}".format(row)].number_format = "0.0"
+        sheet["F{0}".format(row)] = site["url"]
+        for column in "ABCDEF":
+            sheet["{0}{1}".format(column, row)].border = styles["rule"]
+        row += 1
+
+    # Le total est rappele ici parce que c'est le seul chiffre de la feuille
+    # qui ne s'obtienne pas en additionnant la colonne au-dessus : les
+    # zonages se recouvrent, et la somme des lignes depasse couramment la
+    # surface du bassin.
+    row += 1
+    sheet["A{0}".format(row)] = "Total sous zonage, sans double compte"
+    sheet["A{0}".format(row)].font = styles["value"]
+    sheet["D{0}".format(row)] = (protected or {}).get("total_ha")
+    sheet["D{0}".format(row)].number_format = "0.00"
+    sheet["D{0}".format(row)].font = styles["value"]
+    sheet["E{0}".format(row)] = (protected or {}).get("total_pct")
+    sheet["E{0}".format(row)].number_format = "0.0"
+    sheet["E{0}".format(row)].font = styles["value"]
+    _setup_a4(sheet, row, "F")
+
+
+def _sheet_obstacles(book, structures, styles):
+    """Releve des obstacles a l'ecoulement et des sites hydrometriques."""
+    roe = (structures or {}).get("roe") or {}
+    hydro = (structures or {}).get("hydrometrie") or {}
+    if not roe.get("sites") and not hydro.get("sites"):
+        return
+    sheet = book.create_sheet("Obstacles et stations")
+    sheet.sheet_view.showGridLines = False
+    for column, width in (("A", 14), ("B", 40), ("C", 18), ("D", 18),
+                          ("E", 12), ("F", 12), ("G", 16), ("H", 26)):
+        sheet.column_dimensions[column].width = width
+
+    row = 1
+    if roe.get("sites"):
+        # La provenance de la hauteur a sa colonne : une chute mesuree et un
+        # milieu de classe ne se lisent pas de la meme facon, et la moyenne
+        # des deux n'aurait pas de sens sans le dire.
+        for column, label in (("A", "Code ROE"), ("B", "Nom de l'ouvrage"),
+                              ("C", "Type"), ("D", "État"),
+                              ("E", "Chute (m)"), ("F", "Provenance"),
+                              ("G", "Passe à poissons"),
+                              ("H", "Cours d'eau")):
+            cell = sheet["{0}{1}".format(column, row)]
+            cell.value = label
+            cell.font = styles["section"]
+            cell.fill = styles["band"]
+        row += 1
+        for site in roe["sites"]:
+            sheet["A{0}".format(row)] = site["code"]
+            sheet["B{0}".format(row)] = site["nom"]
+            sheet["C{0}".format(row)] = site["type"]
+            sheet["D{0}".format(row)] = site["etat"]
+            sheet["E{0}".format(row)] = site["chute_m"]
+            sheet["E{0}".format(row)].number_format = "0.00"
+            sheet["F{0}".format(row)] = site["chute_origine"]
+            passe = site["passe_a_poissons"]
+            sheet["G{0}".format(row)] = (
+                "non renseigné" if passe is None else
+                ("oui" if passe else "non")
+            )
+            sheet["H{0}".format(row)] = site["cours_d_eau"]
+            for column in "ABCDEFGH":
+                sheet["{0}{1}".format(column, row)].border = styles["rule"]
+            row += 1
+        row += 1
+
+    if hydro.get("sites"):
+        sheet["A{0}".format(row)] = "Sites hydrométriques"
+        sheet["A{0}".format(row)].font = styles["section"]
+        row += 1
+        for column, label in (("A", "Code Sandre"), ("B", "Site"),
+                              ("C", "Type"), ("D", "Gestionnaire")):
+            cell = sheet["{0}{1}".format(column, row)]
+            cell.value = label
+            cell.font = styles["section"]
+            cell.fill = styles["band"]
+        row += 1
+        for site in hydro["sites"]:
+            sheet["A{0}".format(row)] = site["code"]
+            sheet["B{0}".format(row)] = site["nom"]
+            sheet["C{0}".format(row)] = site["type"]
+            sheet["D{0}".format(row)] = site["gestionnaire"]
+            for column in "ABCD":
+                sheet["{0}{1}".format(column, row)].border = styles["rule"]
+            row += 1
+
+    _setup_a4(sheet, row, "H")
 
 
 def _sheet_streams(book, streams_layer, styles):

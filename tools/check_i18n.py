@@ -7,6 +7,7 @@ et toute cle du dictionnaire doit etre reellement utilisee dans le code.
 Sortie 0 si tout est coherent, 1 sinon. A lancer avant chaque publication.
 """
 
+import ast
 import importlib.util
 import os
 import re
@@ -39,6 +40,42 @@ def used_keys():
     return found
 
 
+def catalogue_keys():
+    """Cles de traduction commandees par le catalogue des donnees.
+
+    Le panneau ne les ecrit pas en toutes lettres : il les compose a partir
+    de core/datasets, un onglet ou une donnee tirant son intitule de son
+    propre nom. Sans cette lecture, les vingt-six cles correspondantes
+    seraient toutes signalees comme jamais utilisees, et le controle
+    perdrait tout interet - c'est le genre d'alerte qu'on finit par ignorer.
+
+    La table est lue par son arbre syntaxique et non importee : core/datasets
+    ne depend certes pas de QGIS, mais son paquet parent si.
+    """
+    path = os.path.join(PLUGIN_DIR, "core", "datasets.py")
+    with open(path, encoding="utf-8") as handle:
+        tree = ast.parse(handle.read())
+
+    keys = set()
+    for node in tree.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        target = node.targets[0]
+        if not isinstance(target, ast.Name):
+            continue
+        if target.id == "TABS":
+            keys.update("dstab_" + element.value
+                        for element in node.value.elts
+                        if isinstance(element, ast.Constant))
+        elif target.id == "DATASETS":
+            # Chaque donnee porte deux cles : son intitule de case et la
+            # description qui s'affiche au survol de son i.
+            for element in node.value.elts:
+                keys.add("ds_" + element.elts[0].value)
+                keys.add("dsinfo_" + element.elts[0].value)
+    return keys
+
+
 def main():
     i18n = load_i18n()
     codes = [code for code, _ in i18n.LANGUAGES]
@@ -52,7 +89,7 @@ def main():
             )
 
     declared = set(i18n.TR)
-    used = used_keys()
+    used = used_keys() | catalogue_keys()
     for key in sorted(used - declared):
         problems.append("  {0} : utilisee dans le code, absente de TR".format(key))
     for key in sorted(declared - used):
