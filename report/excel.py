@@ -621,7 +621,7 @@ SOURCES = (
      "RPG.LATEST:parcelles_graphiques, RPG.LATEST:codes_cultures"),
     ("Agriculture (PAC)", "RPG catégorisé — bio et conversion, millésime 2024",
      "Géoplateforme, WFS",
-     "IGNF_RPG_PARCELLES-AGRICOLES-CATEGORISEES_2024"),
+     "RPG_PARCELLES-CATEGORISEES_2024"),
     ("Agriculture (PAC)", "Prairies sensibles BCAE",
      "Géoplateforme, WFS", "PRAIRIES.SENSIBLES.BCAE:prairies_sensibles"),
     ("Agriculture (PAC)", "Aires AOC viticoles",

@@ -3,6 +3,26 @@
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le
 plugin la [gestion sémantique de version](https://semver.org/lang/fr/).
 
+## [1.1.1] - 2026-09-07
+
+### Corrigé
+
+- **La pagination des pages de détail annonçait un total faux.** Chaque page
+  disait « Page X sur 9 » alors que le rapport en compte 10 depuis l'ajout
+  de la page « Sources et méthode » : le total était calculé avant que
+  cette page ne soit ajoutée, à la fin de `_build_details_page`, plutôt
+  qu'une fois toutes les pages posées. Le pied de page des pages de détail
+  est désormais écrit après coup, une fois le nombre de pages définitif.
+  Découvert en générant un rapport réel sur le bassin du Sichon (10 pages).
+
+- **Une référence de couche débordait de la page « Sources et méthode ».**
+  `IGNF_RPG_PARCELLES-AGRICOLES-CATEGORISEES_2024`, sans espace ni virgule
+  pour se couper, dépassait la colonne et la marge de page. Raccourci en
+  `RPG_PARCELLES-CATEGORISEES_2024`, qui tient sur une ligne.
+
+- **L'écran « À propos » affichait encore la version 0.9.0** et ne
+  mentionnait pas Hub'Eau parmi les sources de données.
+
 ## [1.1.0] - 2026-09-07
 
 ### Ajouté

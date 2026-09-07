@@ -1681,11 +1681,11 @@ TR = {
               "liefern.",
     },
     "data_credit": {
-        "fr": "Données : RGE ALTI, BD TOPO, BD TOPAGE — IGN / Sandre",
-        "en": "Data: RGE ALTI, BD TOPO, BD TOPAGE — IGN / Sandre",
-        "es": "Datos: RGE ALTI, BD TOPO, BD TOPAGE — IGN / Sandre",
-        "pt": "Dados: RGE ALTI, BD TOPO, BD TOPAGE — IGN / Sandre",
-        "de": "Daten: RGE ALTI, BD TOPO, BD TOPAGE — IGN / Sandre",
+        "fr": "Données : RGE ALTI, BD TOPO, BD TOPAGE — IGN / Sandre / Hub'Eau",
+        "en": "Data: RGE ALTI, BD TOPO, BD TOPAGE — IGN / Sandre / Hub'Eau",
+        "es": "Datos: RGE ALTI, BD TOPO, BD TOPAGE — IGN / Sandre / Hub'Eau",
+        "pt": "Dados: RGE ALTI, BD TOPO, BD TOPAGE — IGN / Sandre / Hub'Eau",
+        "de": "Daten: RGE ALTI, BD TOPO, BD TOPAGE — IGN / Sandre / Hub'Eau",
     },
 }
 

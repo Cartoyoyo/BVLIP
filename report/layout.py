@@ -239,7 +239,11 @@ def build_layout(project, layers, values, charts_paths, title=None,
            A4_HEIGHT - 12, 32, 5, size=6.5, color=GRIS, align_right=True)
 
     # ------------------------------------------- Pages de detail, si utile
-    _build_details_page(
+    #
+    # Le pied de page des pages de detail n'est pose qu'une fois la page des
+    # sources ajoutee : son "Page X sur Y" annonce un total, et ce total
+    # n'est vrai que si plus aucune page ne vient s'ajouter derriere.
+    detail_pages = _build_details_page(
         layout, details, title, restantes, values,
         context={
             "project": project, "basin": basin, "mask": mask,
@@ -254,6 +258,8 @@ def build_layout(project, layers, values, charts_paths, title=None,
         },
     )
     _build_sources_page(layout, title)
+    if detail_pages:
+        _details_footers(layout, detail_pages)
 
     return layout, temporary
 
@@ -921,9 +927,13 @@ def _build_details_page(layout, details, title, leftovers=None,
     pas de page - elle ferait croire a une donnee manquante la ou il n'y a
     rien a dire - mais un contenu tronque serait pire encore, puisque rien
     n'avertirait le lecteur de ce qu'il ne voit pas.
+
+    Renvoie les pages ecrites, sans poser leur pied de page : la page des
+    sources vient encore apres, et le compte total qu'un pied de page annonce
+    doit attendre qu'elle existe pour etre juste.
     """
     if not _has_details(details) and not leftovers:
-        return
+        return ()
 
     from qgis.core import QgsLayoutItemPage
 
@@ -954,7 +964,7 @@ def _build_details_page(layout, details, title, leftovers=None,
     _fill_gauges(cursor, structures.get("hydrometrie"))
     _fill_leftovers(cursor, apres)
 
-    _details_footers(layout, cursor.pages)
+    return cursor.pages
 
 
 def _details_footers(layout, pages,
@@ -1021,7 +1031,7 @@ SOURCES = (
      "RPG.LATEST:parcelles_graphiques, RPG.LATEST:codes_cultures"),
     ("Agriculture (PAC)", "RPG catégorisé — bio et conversion, millésime 2024",
      "Géoplateforme, WFS",
-     "IGNF_RPG_PARCELLES-AGRICOLES-CATEGORISEES_2024"),
+     "RPG_PARCELLES-CATEGORISEES_2024"),
     ("Agriculture (PAC)", "Prairies sensibles BCAE",
      "Géoplateforme, WFS", "PRAIRIES.SENSIBLES.BCAE:prairies_sensibles"),
     ("Agriculture (PAC)", "Aires AOC viticoles",

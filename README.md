@@ -35,6 +35,11 @@
 | ![Occupation](screenshot/07_rapport_occupation.png) | ![Agriculture](screenshot/08_rapport_agriculture.png) | ![Zonages](screenshot/09_rapport_zonages.png) | ![Obstacles](screenshot/10_rapport_obstacles.png) |
 | BD Forêt v2<br>et Corine | Cultures déclarées,<br>herbe et bio | ZNIEFF, Natura 2000,<br>réserves | ROE, dimensionnés<br>par la chute |
 
+| STEU et population | Prélèvements d'eau | Sources et méthode |
+|:---:|:---:|:---:|
+| ![STEU](screenshot/13_rapport_steu.png) | ![Prélèvements](screenshot/14_rapport_prelevements.png) | ![Sources](screenshot/15_rapport_sources.png) |
+| Normes de rejet calculées,<br>population mise en regard | Hub'Eau / BNPE,<br>par usage | Chaque source,<br>en fin de rapport |
+
 | Réglages | À propos |
 |:---:|:---:|
 | ![Réglages](screenshot/04_reglages.png) | ![À propos](screenshot/05_apropos.png) |
@@ -604,6 +609,7 @@ Le détail complet, avec les mesures qui ont motivé chaque correction, est dans
 
 | Version | Notes |
 |---------|-------|
+| **1.1.1** | Pagination corrigée sur les pages de détail (total de pages faux depuis l'ajout de la page Sources) — référence de couche qui débordait de la page — écran « À propos » à jour |
 | **1.1.0** | Stations de traitement des eaux usées (STEU) avec normes de rejet calculées — population du bassin estimée par bâti et communes — prélèvements d'eau (Hub'Eau / BNPE) — page « Sources et méthode » en fin de rapport — vue 3D : drapé de couches, export GLB, réseau hydrographique par ordre de Strahler |
 | **1.0.1** | L'interface retrouve ses accents dans les cinq langues |
 | **1.0.0** | Zonages environnementaux, obstacles à l'écoulement, masses d'eau souterraines et hydroécorégions — couvert forestier, agriculture déclarée et biologique — huit couches en sous-groupes — rapport multipage à cartes thématiques — panneau à onglets — temps de concentration retirés |
