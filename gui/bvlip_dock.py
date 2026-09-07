@@ -856,7 +856,9 @@ class BvlipDock(QDockWidget):
             self._status(tr("view3d_missing", self.lang))
             return
         try:
-            View3dDialog(relief, self.lang, self).exec_()
+            View3dDialog(
+                relief, self.lang, self, layers=self.last_layers
+            ).exec_()
         except Exception as exc:
             self.log(tr("done_error", self.lang, error=exc))
             self._status(tr("done_error", self.lang, error=exc))

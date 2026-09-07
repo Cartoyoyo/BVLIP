@@ -23,9 +23,9 @@
 | 1 — Choisir | 2 — Délimiter | 3 — Rapporter |
 |:---:|:---:|:---:|
 | ![Onglets](screenshot/06_onglets.png) | ![Carte](screenshot/01_carte.png) | ![Rapport](screenshot/03_rapport.png) |
-| 26 données à cocher,<br>rangées en cinq onglets | Le bassin, son chevelu<br>et les quatre états de l'exutoire | Un rapport multipage,<br>en PDF et en classeur Excel |
+| 29 données à cocher,<br>rangées en cinq onglets | Le bassin, son chevelu<br>et les quatre états de l'exutoire | Un rapport multipage,<br>en PDF et en classeur Excel |
 
-| Huit couches, en sous-groupes | La mosaïque parcellaire |
+| Dix couches, en sous-groupes | La mosaïque parcellaire |
 |:---:|:---:|
 | ![Panneau des couches](screenshot/12_panneau_couches.png) | ![Carte des couches](screenshot/11_couches_carte.png) |
 | Hydrographie, Zonages,<br>Agriculture, Occupation du sol | Parcelles PAC colorées par culture,<br>sur le Plan IGN |
@@ -65,8 +65,9 @@ Fini le MNT à récupérer, à mosaïquer, à reprojeter avant de pouvoir commen
 
 **Caractériser**
 
-- **134 champs, tous étiquetés avec leur unité** : surface, périmètre, indice de compacité de Gravelius, rectangle équivalent, hypsométrie, pentes, indice de pente global, dénivelée spécifique, plus long cheminement hydraulique, densité de drainage.
+- **142 champs, tous étiquetés avec leur unité** : surface, périmètre, indice de compacité de Gravelius, rectangle équivalent, hypsométrie, pentes, indice de pente global, dénivelée spécifique, plus long cheminement hydraulique, densité de drainage.
 - **Eau** : masse d'eau DCE de surface et masse d'eau souterraine, hydroécorégions de niveau 1 et 2, obstacles à l'écoulement du ROE et sites hydrométriques. Un bassin ne s'apprécie pas dans l'absolu mais par rapport à ceux de son hydroécorégion, et ce qu'on a mis en travers de ses cours d'eau explique un régime perturbé autant que sa pente.
+- **Stations de traitement des eaux usées (STEU)** : capacité, charge entrante, taux de charge et autosurveillance des stations du Sandre, avec leurs **normes de rejet calculées** d'après l'arrêté du 21 juillet 2015 — introuvables station par station en donnée ouverte, elles sont recalculées à partir de la capacité et de la zone sensible. **Population estimée** du bassin, par commune ADMIN EXPRESS croisée avec les logements du bâti BD TOPO, mise en regard de la capacité cumulée des STEU. **Prélèvements d'eau** (Hub'Eau / BNPE) par usage — eau potable, irrigation, industrie — pour mesurer la pression en amont, là où les STEU mesurent ce qui est rendu en aval.
 - **Occupation du sol** : Corine Land Cover 2018, complétée par le bâti de la BD TOPO et le couvert de la BD Forêt v2. Corine efface les hameaux comme les petits boisements sous son unité minimale de 25 ha — le rapport explique l'écart entre les deux sources plutôt que de le laisser passer pour une erreur.
 - **Agriculture déclarée** : le Registre parcellaire graphique, c'est-à-dire les parcelles déclarées à la PAC. Surface, nombre et taille des parcelles, répartition entre terres arables, cultures permanentes et prairies, douze premières cultures, et **l'herbe distinguée des cultures** — une prairie retient l'eau et le sol là où un labour les laisse partir. S'y ajoutent l'agriculture biologique à la parcelle, certifiée et en conversion comptées séparément, les prairies sensibles de la BCAE et les aires AOC viticoles.
 - **Douze zonages environnementaux** : ZNIEFF de type I et II, Natura 2000 (ZSC et ZPS), arrêtés de protection de biotope, réserves naturelles nationales et régionales, parcs naturels régionaux, sites Ramsar, zones humides et tourbières, zones vulnérables aux nitrates et zones sensibles à l'eutrophisation. Surface et part du bassin pour chacun, plus un **total sans double compte** obtenu par union géométrique — les zonages se superposent, et leur somme dépasserait couramment 100 % du bassin.
@@ -74,7 +75,8 @@ Fini le MNT à récupérer, à mosaïquer, à reprojeter avant de pouvoir commen
 
 **Cartographier**
 
-- **Huit couches en mémoire**, rangées en sous-groupes intitulés — Hydrographie, Zonages environnementaux, Agriculture, Occupation du sol. Rien n'est écrit sur disque tant que vous ne l'exportez pas.
+- **Dix couches en mémoire**, rangées en sous-groupes intitulés — Hydrographie (chevelu, obstacles, STEU, prélèvements), Zonages environnementaux, Agriculture, Occupation du sol. Rien n'est écrit sur disque tant que vous ne l'exportez pas.
+- **Vue 3D interactive** du bloc-diagramme, tournable à la souris, avec drapé des couches (BD Forêt, parcelles PAC) et export en image ou en GLB pour un logiciel de modélisation. Le réseau hydrographique s'y épaissit selon l'ordre de Strahler du tronçon, du ruisseau de tête de bassin au collecteur principal.
 - **Parcelles PAC** colorées par intitulé de culture, verts pour l'herbe et tons chauds pour les cultures ; **parcelles bio** hachurées par-dessus, qui marquent l'engagement sans effacer la couleur de la culture ; **formations forestières** dans la gamme des verts ; **zonages** en aplats translucides dont le cumul signale les recouvrements ; **obstacles du ROE** en points dont la couleur dit la franchissabilité et la taille la hauteur de chute.
 - **Cours d'eau nommés** : la couche des tronçons amont reprend le toponyme, le code hydrographique, la nature, la persistance et la classe de largeur de la BD TOPO. Les écoulements intermittents se distinguent des permanents par un trait tireté.
 
@@ -82,6 +84,7 @@ Fini le MNT à récupérer, à mosaïquer, à reprojeter avant de pouvoir commen
 
 - **Rapport A4 multipage**, en PDF et en classeur Excel. La première page est la fiche du bassin ; les suivantes portent le détail, chacune ouverte par **une carte thématique et sa légende** — la carte dit où sont les choses, le tableau dit combien.
 - **Rien n'est tronqué** : quand la place manque, une page s'ouvre et le tableau reprend, en-têtes de colonnes redessinés et pagination à l'appui. Un rapport coupé laisserait croire qu'on a tout vu.
+- **Page « Sources et méthode »**, toujours en fin de rapport : chaque jeu de données que le traitement peut interroger, son fournisseur, son service technique et sa couche exacte, plus les méthodes de calcul qui ne se lisent pas dans un simple tableau — normes STEU, population estimée, prélèvements.
 - **Traitement par lot** via un algorithme Processing, intégrable dans un modèle graphique. Un point qui échoue n'interrompt pas le lot.
 - **Interface en cinq langues**, commutable depuis le menu de l'extension : français, anglais, espagnol, portugais, allemand.
 
@@ -206,6 +209,10 @@ Point cliqué
 | Zones vulnérables et sensibles | Référentiel Sandre | WFS `services.sandre.eaufrance.fr` |
 | Obstacles à l'écoulement | ROE (Sandre) | WFS `services.sandre.eaufrance.fr` |
 | Sites hydrométriques | Référentiel Sandre | WFS `services.sandre.eaufrance.fr` |
+| Stations de traitement (STEU) | `sa:SysTraitementEauxUsees` (Sandre) | WFS `services.sandre.eaufrance.fr` |
+| Communes et population | ADMIN EXPRESS COG (IGN) | WFS Géoplateforme |
+| Logements du bâti | BD TOPO `batiment` (`nombre_de_logements`) | WFS Géoplateforme |
+| Prélèvements d'eau | BNPE (Office français de la biodiversité) | API REST `hubeau.eaufrance.fr` |
 | Fond de plan du rapport | Plan IGN v2 | WMTS Géoplateforme |
 
 ### Limites connues
@@ -263,6 +270,9 @@ Elles se disent plutôt qu'elles ne se cachent. La chaîne a été éprouvée su
 - **Les zonages environnementaux ne s'additionnent pas.** Une ZNIEFF de type I est presque toujours incluse dans une ZNIEFF de type II, une ZSC et une ZPS se superposent sur les mêmes vallées : sommer les douze lignes annoncerait couramment plus de 100 % d'un bassin. Seul le **total sans double compte**, calculé par union géométrique, se compare à la surface. Une ligne vide signifie que le zonage ne recoupe pas le bassin ; c'est le total, à zéro, qui atteste que le calcul a bien eu lieu.
 - **Les ENS ne figurent pas**, faute d'exister au niveau national : les espaces naturels sensibles relèvent des conseils départementaux et ne sont publiés ni sur la Géoplateforme ni au Sandre. Les protections réglementaires fortes — arrêtés de biotope, réserves nationales et régionales — les remplacent en partie, sans les recouvrir.
 - **La hauteur de chute cumulée du ROE est reconstituée.** Le référentiel ne renseigne la hauteur exacte que sur une minorité d'ouvrages ; ailleurs il ne donne qu'une classe, « de 1,5 m à inférieure à 2 m », dont le milieu est alors retenu. Le classeur indique la provenance ouvrage par ouvrage. Les ouvrages sans hauteur ni classe ne comptent pour rien : la somme est un **minorant**. Le type d'ouvrage, lui, est affiché en code Sandre brut, sa nomenclature n'étant pas servie par l'API — un code se vérifie, un libellé inventé ne se vérifierait pas.
+- **La population du bassin est une estimation, pas un recensement.** Pour chaque commune ADMIN EXPRESS recoupant le bassin, les logements du bâti BD TOPO dans la part du bassin qui la touche sont rapportés aux logements de la commune entière, puis cette part est appliquée à sa population officielle. Le compte porte sur les logements (`nombre_de_logements`), pas sur les bâtiments : un garage ou un hangar agricole n'en compte aucun, l'IGN le calculant à partir des seules parties d'évaluation cadastrale marquées habitation. L'hypothèse — densité de logements comparable dans et hors bassin — est fragile près d'un bourg-centre à cheval sur la limite communale.
+- **Les prélèvements d'eau ne filtrent que par commune, pas par emprise.** Hub'Eau ne propose aucun filtre géographique : le relevé part des communes qui recoupent le bassin, puis ne garde que les ouvrages dont le point tombe réellement dedans. Un ouvrage porte plusieurs années déclarées ; seule la plus récente connue est retenue, qui peut dater de plusieurs années selon l'ouvrage.
+- **Les normes de rejet des STEU sont calculées, pas rapatriées.** Aucune base ouverte ne les publie station par station : elles sont recalculées d'après l'arrêté du 21 juillet 2015, à partir de la seule capacité et de la zone sensible de rejet — un plancher réglementaire national que l'arrêté préfectoral de chaque ouvrage peut resserrer, jamais assouplir.
 - **La masse d'eau souterraine est celle qui affleure.** Les nappes se superposent, et le référentiel les livre en polygones distincts ; c'est la moins étendue en surface d'affleurement qui est retenue, parce que c'est celle qui échange avec le cours d'eau. Un aquifère profond sous le même point n'est pas rapporté.
 - **Le bâti est l'étape la plus coûteuse** sur un grand bassin : la BD TOPO y compte des dizaines de milliers de polygones, lus page par page. Si le service refuse ou si le budget d'entités est atteint, les champs restent vides et le reste du rapport est produit.
 - **Aucun enrichissement ne bloque le calcul.** Caractéristiques, occupation du sol, agriculture, zonages, masses d'eau et obstacles sont tentés après la délimitation : un service indisponible ajoute un avertissement dans le journal et laisse les champs correspondants vides, mais le bassin, lui, est produit.
@@ -272,9 +282,9 @@ Elles se disent plutôt qu'elles ne se cachent. La chaîne a été éprouvée su
 
 - **Rien n'est écrit sur disque tant que vous ne le demandez pas.** Les couches sont créées en mémoire : fermer QGIS sans les exporter, ou sans enregistrer le projet, perd le résultat. C'est délibéré — un essai qui ne convient pas ne laisse aucun fichier derrière lui — mais il faut le savoir.
 - **Le rapport ne porte que le dernier bassin calculé**, et seulement depuis le panneau. Le traitement par lot produit les couches, pas les rapports : il faut repasser par le panneau, un bassin à la fois.
-- **Le rapport pagine, il ne tronque plus.** La première page reste la fiche du bassin ; ce qui n'y tient pas passe sur les pages de détail, qui s'ouvrent autant que nécessaire, en-têtes de colonnes redessinés à chaque reprise. Le classeur Excel porte le même contenu sur cinq onglets : bassin versant, occupation du sol, zonages environnementaux, obstacles et stations, cours d'eau amont.
+- **Le rapport pagine, il ne tronque plus.** La première page reste la fiche du bassin ; ce qui n'y tient pas passe sur les pages de détail, qui s'ouvrent autant que nécessaire, en-têtes de colonnes redessinés à chaque reprise. Le classeur Excel porte le même contenu, réparti sur autant d'onglets que de données présentes : bassin versant, occupation du sol, zonages environnementaux, obstacles et stations, STEU, prélèvements, sources et méthode, cours d'eau amont.
 - **Dans le classeur, les graphiques sont sous le tableau** et non à sa droite comme sur la page A4 : côte à côte, la largeur dépasserait la feuille A4 portrait.
-- **À l'export Shapefile**, 56 des 134 noms de champs sont tronqués à dix caractères et les intitulés avec unités sont perdus, ce format ne sachant pas les stocker. Aucun nom ne se télescope, c'est vérifié. Préférer le **GeoPackage**.
+- **À l'export Shapefile**, 61 des 142 noms de champs sont tronqués à dix caractères et les intitulés avec unités sont perdus, ce format ne sachant pas les stocker. Aucun nom ne se télescope, c'est vérifié. Préférer le **GeoPackage**.
 - **L'annulation est prise en compte entre deux étapes.** Un téléchargement engagé va à son terme — au plus 60 s par requête — avant que la demande d'arrêt ne soit vue : le bouton rend la main en quelques secondes, pas instantanément.
 - **Seuls les deux rayons d'accrochage se règlent dans l'interface.** La résolution imposée du MNT, le seuil d'ouverture des écoulements et la tolérance de simplification du contour ne sont exposés que par l'algorithme Processing.
 - **Sans `matplotlib`, le rapport sort sans ses graphiques ; sans `openpyxl`, sans son classeur.** Les deux sont livrés avec l'installation Windows de QGIS ; leur absence est signalée dans le journal et n'interrompt rien.
@@ -303,8 +313,9 @@ No more fetching, mosaicking and reprojecting a DEM before you can start: pick a
 
 **Characterise**
 
-- **134 fields, every one labelled with its unit**: area, perimeter, Gravelius compactness index, equivalent rectangle, hypsometry, slopes, global slope index, specific relief, longest flow path, drainage density.
+- **142 fields, every one labelled with its unit**: area, perimeter, Gravelius compactness index, equivalent rectangle, hypsometry, slopes, global slope index, specific relief, longest flow path, drainage density.
 - **Water**: WFD surface and groundwater bodies, hydro-ecoregions levels 1 and 2, ROE barriers to flow and gauging sites. A catchment is not judged in the absolute but against those of its hydro-ecoregion, and what has been put across its streams explains a disturbed regime as much as its slope does.
+- **Wastewater treatment plants (STEU)**: capacity, incoming load, load rate and self-monitoring from Sandre, with **discharge standards computed** from the 21 July 2015 decree — not published plant by plant in open data, so recomputed from capacity and sensitive discharge zone. **Estimated population** of the basin, from ADMIN EXPRESS communes cross-checked against BD TOPO building dwellings, set against cumulated STEU capacity. **Water withdrawals** (Hub'Eau / BNPE) by use — drinking water, irrigation, industry — measuring upstream pressure where STEU measure what is returned downstream.
 - **Land cover**: Corine Land Cover 2018, complemented by BD TOPO buildings and BD Forêt v2 forest cover. Corine erases hamlets and small woods below its 25 ha minimum mapping unit — the report explains the gap between the two sources rather than letting it pass for an error.
 - **Declared farmland**: the graphic parcel register, that is the plots declared under the common agricultural policy. Area, parcel count and size, split between arable land, permanent crops and grassland, top twelve crops, and **grass told apart from crops** — grassland holds water and soil where tillage lets both go. Plus organic farming at plot level, certified and in conversion counted separately, GAEC sensitive grassland and wine PDO areas.
 - **Twelve environmental designations**: ZNIEFF types I and II, Natura 2000 (SAC and SPA), biotope protection orders, national and regional nature reserves, regional nature parks, Ramsar sites, wetlands and peatlands, nitrate vulnerable zones and areas sensitive to eutrophication. Area and share for each, plus a **double-count-free total** by geometric union — designations overlap, and their sum would routinely exceed 100 % of the basin.
@@ -312,7 +323,8 @@ No more fetching, mosaicking and reprojecting a DEM before you can start: pick a
 
 **Map**
 
-- **Eight in-memory layers**, filed under named sub-groups — Hydrography, Designations, Farming, Land cover. Nothing is written to disk until you export it.
+- **Ten in-memory layers**, filed under named sub-groups — Hydrography (network, barriers, STEU, withdrawals), Designations, Farming, Land cover. Nothing is written to disk until you export it.
+- **Interactive 3D view** of the relief block diagram, spinnable with the mouse, with layer draping (BD Forêt, CAP parcels) and export as an image or as GLB for 3D modelling software. The stream network thickens by Strahler order, from headwater trickle to main collector.
 - **CAP parcels** coloured by crop label, greens for grass and warm tones for crops; **organic plots** hatched on top, marking the commitment without hiding the crop colour; **forest formations** in a range of greens; **designations** as translucent fills whose stacking reveals the overlaps; **ROE barriers** as points whose colour tells passability and whose size tells head.
 - **Named watercourses**: the upstream reach layer carries the toponym, hydrographic code, nature, persistence and width class from BD TOPO. Intermittent flows are drawn dashed.
 
@@ -320,6 +332,7 @@ No more fetching, mosaicking and reprojecting a DEM before you can start: pick a
 
 - **Multipage A4 report**, as PDF and as an Excel workbook. The first page is the catchment fact sheet; the following ones carry the detail, each opened by **a thematic map and its legend** — the map says where things are, the table says how much.
 - **Nothing is truncated**: when room runs out a page opens and the table resumes, column headers redrawn and pagination in the footer. A truncated report would let the reader believe they had seen everything.
+- **"Sources and method" page**, always at the end of the report: every dataset the processing can query, its provider, its technical service and exact layer, plus the calculation methods a plain table cannot carry — STEU standards, estimated population, withdrawals.
 - **Batch processing** through a Processing algorithm. A point that fails does not stop the batch.
 - **Interface in five languages**, switchable from the plugin menu.
 
@@ -403,6 +416,9 @@ Stated rather than hidden. The chain has been exercised on the Allier, the Besbr
 - **Environmental designations do not add up.** A type I ZNIEFF nearly always sits inside a type II one, an SAC and an SPA overlap on the same valleys: summing the twelve rows would routinely exceed 100 % of a basin. Only the **double-count-free total**, computed as a geometric union, compares to the area. An empty row means the designation does not meet the basin; the total, at zero, attests that the computation did take place.
 - **Départements' ENS are absent**, having no national publication: sensitive natural areas are a departmental competence and appear neither on the Géoplateforme nor at Sandre.
 - **The ROE cumulated head is reconstructed.** The reference set gives an exact head on a minority of structures only; elsewhere it gives a class, whose midpoint is then used. The workbook states the provenance structure by structure, and structures with neither head nor class count for nothing: the sum is a **lower bound**. Structure type is shown as the raw Sandre code, its nomenclature not being served by the API.
+- **Basin population is an estimate, not a census.** For each ADMIN EXPRESS commune intersecting the basin, BD TOPO building dwellings in the part of the commune touching the basin are set against the whole commune's dwellings, and that share is applied to its official population. The count is of dwellings (`nombre_de_logements`), not buildings: a garage or a farm shed counts for none, IGN computing it from cadastral valuation parts flagged as dwelling only. The assumption — comparable dwelling density inside and outside the basin — is fragile near a town centre straddling the commune boundary.
+- **Water withdrawals only filter by commune, not by extent.** Hub'Eau offers no geographic filter: the survey starts from the communes intersecting the basin, then keeps only facilities whose point actually falls inside it. A facility carries several declared years; only the most recent known one is kept, which can be several years old depending on the facility.
+- **STEU discharge standards are computed, not fetched.** No open database publishes them plant by plant: they are recomputed from the 21 July 2015 decree, using only capacity and sensitive discharge zone — a national regulatory floor that each plant's prefectoral order may tighten, never relax.
 - **The groundwater body is the outcropping one.** Aquifers overlap; the one with the smallest outcrop is kept, being the one that exchanges with the stream.
 - **Buildings are the costliest step** on a large basin: BD TOPO holds tens of thousands of polygons there, read page by page. If the service refuses or the feature budget is reached, the fields stay empty and the rest of the report is produced.
 - **No enrichment step ever blocks the run.** Metrics, land cover, farmland, designations, water bodies and barriers are attempted after delineation: an unavailable service adds a warning to the log and leaves the matching fields empty, but the basin itself is produced.
@@ -412,9 +428,9 @@ Stated rather than hidden. The chain has been exercised on the Allier, the Besbr
 
 - **Nothing is written to disk until you ask.** The layers are created in memory: closing QGIS without exporting them, or without saving the project, loses the result. This is deliberate — a trial run that does not suit leaves no file behind — but it must be known.
 - **The report covers the last computed basin only**, and only from the panel. Batch processing produces layers, not reports: you must come back through the panel, one basin at a time.
-- **The report paginates, it no longer truncates.** The first page stays the catchment fact sheet; what does not fit moves to the detail pages, which open as needed, column headers redrawn at each resumption. The Excel workbook carries the same content over five sheets: catchment, land cover, designations, barriers and gauges, upstream reaches.
+- **The report paginates, it no longer truncates.** The first page stays the catchment fact sheet; what does not fit moves to the detail pages, which open as needed, column headers redrawn at each resumption. The Excel workbook carries the same content, spread over as many sheets as there is data for: catchment, land cover, designations, barriers and gauges, STEU, withdrawals, sources and method, upstream reaches.
 - **In the workbook the charts sit below the table**, not beside it: side by side they would not fit an A4 portrait page.
-- **On Shapefile export**, 56 of the 134 field names are truncated to ten characters and the unit-bearing labels are lost. No two names collide, that is verified. Prefer **GeoPackage**.
+- **On Shapefile export**, 61 of the 142 field names are truncated to ten characters and the unit-bearing labels are lost. No two names collide, that is verified. Prefer **GeoPackage**.
 - **Cancellation is honoured between steps.** A download already under way runs to completion — at most 60 s per request — before the stop request is seen: the button gives back control in seconds, not instantly.
 - **Only the two snapping radii are exposed in the interface.** A forced DEM resolution, the stream-opening threshold and the outline simplification tolerance are available through the Processing algorithm only.
 - **Without `matplotlib` the report comes without its charts; without `openpyxl`, without its workbook.** Both ship with the Windows install of QGIS; their absence is logged and stops nothing.
@@ -434,13 +450,14 @@ BVLIP delimita la cuenca hidrográfica topográfica drenada por un punto elegido
 - **Sin dependencia externa**: el cálculo se apoya en GRASS, incluido con QGIS.
 - **Enganche del desagüe en dos tiempos**: primero sobre el trazado BD TOPO, luego sobre la red de talwegs deducida del modelo del terreno.
 - **Control de coherencia**: por debajo del 60 % de la longitud estrictamente aguas arriba, el proceso se detiene y explica por qué.
-- **134 campos etiquetados con su unidad**: superficie, perímetro, índice de Gravelius, rectángulo equivalente, hipsometría, pendientes, recorrido hidráulico más largo, densidad de drenaje.
+- **142 campos etiquetados con su unidad**: superficie, perímetro, índice de Gravelius, rectángulo equivalente, hipsometría, pendientes, recorrido hidráulico más largo, densidad de drenaje.
 - **Doce zonas de protección**: ZNIEFF I y II, Natura 2000 (ZEC y ZEPA), reservas naturales, parques naturales regionales, Ramsar, humedales, zonas vulnerables a nitratos y sensibles a la eutrofización — con un **total sin doble cómputo** por unión geométrica.
 - **Agricultura declarada (PAC)**: superficie, cultivos declarados, **pastos diferenciados de los cultivos**, agricultura ecológica por parcela, pastos sensibles y denominaciones de origen vitícolas.
-- **Agua**: masas de agua superficial y subterránea, hidroecorregiones, obstáculos al flujo (ROE) y estaciones de aforo.
+- **Agua**: masas de agua superficial y subterránea, hidroecorregiones, obstáculos al flujo (ROE) y estaciones de aforo. Estaciones de depuración (STEU) con sus normas de vertido calculadas, **población estimada** de la cuenca (edificado BD TOPO y municipios ADMIN EXPRESS) y **captaciones de agua** (Hub'Eau / BNPE) por uso.
 - **Se elige qué se descarga**, dato por dato, en cinco pestañas — con una descripción al pasar el ratón. Pedir solo tres datos reduce el levantamiento de 52 a 2 segundos.
-- **Hasta ocho capas en memoria**, ordenadas en subgrupos con título; nada se escribe en disco mientras no se exporte.
-- **Informe A4 multipágina**, en PDF y en libro Excel, cada página de detalle encabezada por su mapa temático y su leyenda.
+- **Diez capas en memoria**, ordenadas en subgrupos con título; nada se escribe en disco mientras no se exporte.
+- **Vista 3D interactiva** del relieve, con drapeado de capas y exportación en GLB.
+- **Informe A4 multipágina**, en PDF y en libro Excel, cada página de detalle encabezada por su mapa temático y su leyenda, y una página final **« Fuentes y método »** que enumera cada fuente de datos.
 - **Procesamiento por lotes** mediante un algoritmo Processing.
 - **Interfaz en cinco idiomas**, conmutable desde el menú de la extensión.
 
@@ -478,13 +495,14 @@ O BVLIP delimita a bacia hidrográfica topográfica drenada por um ponto escolhi
 - **Sem dependência externa**: o cálculo assenta no GRASS, fornecido com o QGIS.
 - **Ajuste do exutório em dois tempos**: primeiro sobre o traçado BD TOPO, depois sobre a rede de talvegues deduzida do modelo do terreno.
 - **Controlo de coerência**: abaixo de 60 % do comprimento estritamente a montante, o processamento para e diz porquê.
-- **134 campos rotulados com a sua unidade**: área, perímetro, índice de Gravelius, retângulo equivalente, hipsometria, declives, percurso hidráulico mais longo, densidade de drenagem.
+- **142 campos rotulados com a sua unidade**: área, perímetro, índice de Gravelius, retângulo equivalente, hipsometria, declives, percurso hidráulico mais longo, densidade de drenagem.
 - **Doze zonamentos de proteção**: ZNIEFF I e II, Natura 2000 (ZEC e ZPE), reservas naturais, parques naturais regionais, Ramsar, zonas húmidas, zonas vulneráveis a nitratos e sensíveis à eutrofização — com um **total sem dupla contagem** por união geométrica.
 - **Agricultura declarada (PAC)**: área, culturas declaradas, **pastagens distinguidas das culturas**, agricultura biológica à parcela, pastagens sensíveis e denominações de origem vitícolas.
-- **Água**: massas de água superficiais e subterrâneas, hidroecorregiões, obstáculos ao escoamento (ROE) e estações hidrométricas.
+- **Água**: massas de água superficiais e subterrâneas, hidroecorregiões, obstáculos ao escoamento (ROE) e estações hidrométricas. Estações de tratamento (STEU) com os seus limiares de descarga calculados, **população estimada** da bacia (edificado BD TOPO e municípios ADMIN EXPRESS) e **captações de água** (Hub'Eau / BNPE) por uso.
 - **Escolhe-se o que é descarregado**, dado a dado, em cinco separadores — com uma descrição ao passar o rato. Pedir apenas três dados reduz o levantamento de 52 para 2 segundos.
-- **Até oito camadas em memória**, arrumadas em subgrupos com título; nada é escrito em disco enquanto não for exportado.
-- **Relatório A4 multipágina**, em PDF e em livro Excel, cada página de detalhe encabeçada pelo seu mapa temático e respetiva legenda.
+- **Dez camadas em memória**, arrumadas em subgrupos com título; nada é escrito em disco enquanto não for exportado.
+- **Vista 3D interativa** do relevo, com sobreposição de camadas e exportação em GLB.
+- **Relatório A4 multipágina**, em PDF e em livro Excel, cada página de detalhe encabeçada pelo seu mapa temático e respetiva legenda, e uma página final **« Fontes e método »** com todas as fontes de dados.
 - **Processamento em lote** através de um algoritmo Processing.
 - **Interface em cinco línguas**, comutável a partir do menu da extensão.
 
@@ -522,13 +540,14 @@ BVLIP grenzt das topografische Einzugsgebiet ab, das von einem auf der Karte gew
 - **Keine externe Abhängigkeit**: die Berechnung stützt sich auf GRASS, das mit QGIS ausgeliefert wird.
 - **Zweistufiges Einrasten des Auslasses**: zuerst auf die BD-TOPO-Linie, dann auf das aus dem Geländemodell abgeleitete Gerinnenetz.
 - **Konsistenzprüfung**: unter 60 % der streng oberstromigen Länge bricht die Verarbeitung ab und nennt den Grund.
-- **134 Felder, jedes mit seiner Einheit beschriftet**: Fläche, Umfang, Gravelius-Index, äquivalentes Rechteck, Hypsometrie, Neigungen, längster Fließweg, Entwässerungsdichte.
+- **142 Felder, jedes mit seiner Einheit beschriftet**: Fläche, Umfang, Gravelius-Index, äquivalentes Rechteck, Hypsometrie, Neigungen, längster Fließweg, Entwässerungsdichte.
 - **Zwölf Schutzgebietstypen**: ZNIEFF I und II, Natura 2000 (FFH und Vogelschutz), Naturschutzgebiete, regionale Naturparks, Ramsar, Feuchtgebiete, Nitrat- und eutrophierungsempfindliche Gebiete — mit einer **doppelzählungsfreien Summe** über die geometrische Vereinigung.
 - **Gemeldete Landwirtschaft (GAP)**: Fläche, gemeldete Kulturen, **Grünland getrennt von Ackerkulturen**, Ökolandbau je Schlag, empfindliches Dauergrünland und Weinbau-Herkunftsgebiete.
-- **Wasser**: Oberflächen- und Grundwasserkörper, Hydroökoregionen, Querbauwerke (ROE) und Pegelstationen.
+- **Wasser**: Oberflächen- und Grundwasserkörper, Hydroökoregionen, Querbauwerke (ROE) und Pegelstationen. Kläranlagen (STEU) mit berechneten Einleitgrenzwerten, **geschätzte Bevölkerung** des Einzugsgebiets (BD-TOPO-Gebäude und ADMIN-EXPRESS-Gemeinden) und **Wasserentnahmen** (Hub'Eau / BNPE) nach Nutzung.
 - **Sie wählen, was abgerufen wird**, Datensatz für Datensatz, in fünf Reitern — mit einer Beschreibung beim Überfahren. Nur drei Datensätze anzufordern senkt die Erhebung von 52 auf 2 Sekunden.
-- **Bis zu acht Layer im Speicher**, in benannten Untergruppen abgelegt; nichts wird auf die Festplatte geschrieben, bevor Sie exportieren.
-- **Mehrseitiger A4-Bericht**, als PDF und als Excel-Arbeitsmappe, jede Detailseite eröffnet durch ihre thematische Karte und deren Legende.
+- **Zehn Layer im Speicher**, in benannten Untergruppen abgelegt; nichts wird auf die Festplatte geschrieben, bevor Sie exportieren.
+- **Interaktive 3D-Ansicht** des Reliefs, mit Layer-Drapierung und GLB-Export.
+- **Mehrseitiger A4-Bericht**, als PDF und als Excel-Arbeitsmappe, jede Detailseite eröffnet durch ihre thematische Karte und deren Legende, mit einer abschließenden Seite **„Quellen und Methode"**, die jede Datenquelle auflistet.
 - **Stapelverarbeitung** über einen Processing-Algorithmus.
 - **Oberfläche in fünf Sprachen**, über das Erweiterungsmenü umschaltbar.
 
@@ -560,7 +579,7 @@ Le plugin sépare le calcul de l'interface : `core/` ne dépend ni du panneau ni
 
 | Paquet | Rôle |
 |---|---|
-| `core/` | géoservices, réseau hydrographique, MNT, délimitation, caractéristiques, masse d'eau, occupation du sol, orchestration |
+| `core/` | géoservices, réseau hydrographique, MNT, délimitation, caractéristiques, masse d'eau, occupation du sol, STEU, population, prélèvements, relief 3D, orchestration |
 | `gui/` | panneau, tâche de fond, outil de carte, réglages, fiche du plugin |
 | `processing/` | fournisseur et algorithme de traitement par lot |
 | `report/` | graphiques, mise en page A4, PDF, classeur Excel |
@@ -585,6 +604,7 @@ Le détail complet, avec les mesures qui ont motivé chaque correction, est dans
 
 | Version | Notes |
 |---------|-------|
+| **1.1.0** | Stations de traitement des eaux usées (STEU) avec normes de rejet calculées — population du bassin estimée par bâti et communes — prélèvements d'eau (Hub'Eau / BNPE) — page « Sources et méthode » en fin de rapport — vue 3D : drapé de couches, export GLB, réseau hydrographique par ordre de Strahler |
 | **1.0.1** | L'interface retrouve ses accents dans les cinq langues |
 | **1.0.0** | Zonages environnementaux, obstacles à l'écoulement, masses d'eau souterraines et hydroécorégions — couvert forestier, agriculture déclarée et biologique — huit couches en sous-groupes — rapport multipage à cartes thématiques — panneau à onglets — temps de concentration retirés |
 | **0.9.2** | Chevelu chargé par dalles — bassins hors gabarit refusés, avec reprise — canaux non remontés — altitudes aberrantes du MNT réparées |

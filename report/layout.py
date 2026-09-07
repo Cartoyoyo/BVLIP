@@ -231,7 +231,8 @@ def build_layout(project, layers, values, charts_paths, title=None,
     _label(layout,
            "Sources : RGE ALTI, BD TOPO et BD Forêt v2 (IGN) · Corine Land "
            "Cover 2018 · zonages INPN / Patrinat · masses d'eau, "
-           "hydroécorégions et ROE (Sandre) · fond Plan IGN v2",
+           "hydroécorégions, ROE et STEU (Sandre) · prélèvements (Hub'Eau) · "
+           "fond Plan IGN v2",
            MARGIN, A4_HEIGHT - 15, A4_WIDTH - 2 * MARGIN - 34, 9,
            size=6.5, color=GRIS)
     _label(layout, "Produit par BVLIP", A4_WIDTH - MARGIN - 32,
@@ -239,7 +240,7 @@ def build_layout(project, layers, values, charts_paths, title=None,
 
     # ------------------------------------------- Pages de detail, si utile
     _build_details_page(
-        layout, details, title, restantes,
+        layout, details, title, restantes, values,
         context={
             "project": project, "basin": basin, "mask": mask,
             "basemap": base,
@@ -247,9 +248,12 @@ def build_layout(project, layers, values, charts_paths, title=None,
             "parcelles": layers.get("parcelles"),
             "zonages": layers.get("zonages"),
             "obstacles": layers.get("obstacles"),
+            "steu": layers.get("steu"),
+            "prelevements": layers.get("prelevements"),
             "reseau": layers.get("reseau"),
         },
     )
+    _build_sources_page(layout, title)
 
     return layout, temporary
 
@@ -392,6 +396,23 @@ HYDRO_COLUMNS = (
     (112.0, 74.0, False),
 )
 
+STEU_COLUMNS = (
+    (0.0, 18.0, False),      # code Sandre
+    (19.0, 56.0, False),     # nom de la station
+    (76.0, 22.0, True),      # capacite nominale (EH)
+    (99.0, 20.0, True),      # taux de charge (%)
+    (120.0, 41.0, False),    # commune
+    (162.0, 24.0, False),    # autosurveillance
+)
+
+PRELEVEMENT_COLUMNS = (
+    (0.0, 60.0, False),      # nom de l'ouvrage
+    (61.0, 55.0, False),     # usage
+    (117.0, 25.0, True),     # volume (m3/an)
+    (144.0, 20.0, True),     # annee
+    (166.0, 20.0, False),    # commune
+)
+
 
 class _Cursor:
     """Curseur d'ecriture sur les pages de detail, qu'il cree au besoin.
@@ -414,10 +435,15 @@ class _Cursor:
         etant calculee avant de la poser.
     """
 
-    def __init__(self, layout, page, title):
+    def __init__(self, layout, page, title, heading=None):
         self.layout = layout
         self.page = page
         self.title = title
+        # DETAILS_TITLE n'existe pas encore a la definition de cette classe,
+        # placee plus haut dans le fichier pour rester pres de _Cursor.row -
+        # d'ou la resolution paresseuse, au premier appel et non au chargement
+        # du module.
+        self.heading = heading if heading is not None else DETAILS_TITLE
         self.pages = [page]
         self.y = PAGE2_TOP
         # En-tetes a redessiner en haut de la page suivante. Remis a None des
@@ -434,7 +460,8 @@ class _Cursor:
         self.layout.pageCollection().addPage(page_item)
         self.page = self.layout.pageCollection().pageCount() - 1
         self.pages.append(self.page)
-        _details_header(self.layout, self.page, self.title, first=False)
+        _details_header(self.layout, self.page, self.title, first=False,
+                        heading=self.heading)
         self.y = PAGE2_TOP
         if self._repeat is not None:
             spec, headers = self._repeat
@@ -605,6 +632,8 @@ def _has_details(details):
         (protected.get("zonages") or [])
         or (structures.get("roe") or {}).get("nb")
         or (structures.get("hydrometrie") or {}).get("nb")
+        or (details.get("steu") or {}).get("nb")
+        or (details.get("prelevements") or {}).get("nb")
         or details.get("water_body") or details.get("groundwater")
         or any((details.get("hydroecoregion") or {}).values())
         or (cover.get("corine") or {}).get("classes")
@@ -872,16 +901,20 @@ def _zonage_legend(layout, map_item, zonages, project):
 DETAILS_TITLE = "Caractéristiques détaillées du bassin"
 
 
-def _details_header(layout, page, subtitle, first=True):
-    """Titre d'une page de detail. Les suivantes portent la mention (suite)."""
-    _label(layout, DETAILS_TITLE if first else DETAILS_TITLE + " (suite)",
+def _details_header(layout, page, subtitle, first=True, heading=DETAILS_TITLE):
+    """Titre d'une page de detail. Les suivantes portent la mention (suite).
+
+    heading permet a une page de detail differente - les sources, par
+    exemple - de reutiliser le meme habillage sous son propre titre.
+    """
+    _label(layout, heading if first else heading + " (suite)",
            MARGIN, 10, 150, 7, size=13, bold=True, page=page)
     _label(layout, subtitle or "", MARGIN, 18, 186, 5, size=8, color=GRIS,
            page=page)
 
 
 def _build_details_page(layout, details, title, leftovers=None,
-                        context=None):
+                        values=None, context=None):
     """Ajoute les pages de detail des zonages et de l'eau, s'il y a lieu.
 
     Il y en a une, ou dix : le contenu decide. Une page vide serait pire que
@@ -915,13 +948,18 @@ def _build_details_page(layout, details, title, leftovers=None,
     _fill_zonages(cursor, details.get("protected"), context)
     _fill_water(cursor, details)
     _fill_obstacles(cursor, structures.get("roe"), context)
+    _fill_steu(cursor, (details or {}).get("steu"),
+              (details or {}).get("population"), values, context)
+    _fill_prelevements(cursor, (details or {}).get("prelevements"), context)
     _fill_gauges(cursor, structures.get("hydrometrie"))
     _fill_leftovers(cursor, apres)
 
     _details_footers(layout, cursor.pages)
 
 
-def _details_footers(layout, pages):
+def _details_footers(layout, pages,
+                     note="Détail complet dans le classeur accompagnant "
+                          "ce rapport."):
     """Pied de page de chaque page de detail, avec sa pagination.
 
     La pagination n'apparait que sur ces pages : la premiere ne bouge pas, et
@@ -931,8 +969,7 @@ def _details_footers(layout, pages):
     """
     total = layout.pageCollection().pageCount()
     for page in pages:
-        _label(layout,
-               "Détail complet dans le classeur accompagnant ce rapport.",
+        _label(layout, note,
                MARGIN, A4_HEIGHT - 12, 110, 5, size=6.5, color=GRIS,
                page=page)
         _label(layout, "Page {0} sur {1}".format(page + 1, total),
@@ -941,6 +978,154 @@ def _details_footers(layout, pages):
         _label(layout, "Produit par BVLIP", A4_WIDTH - MARGIN - 32,
                A4_HEIGHT - 12, 32, 5, size=6.5, color=GRIS, align_right=True,
                page=page)
+
+
+SOURCES_TITLE = "Sources et méthode"
+
+SOURCES_COLUMNS = (
+    (0.0, 30.0, False),      # theme
+    (31.0, 58.0, False),     # jeu de donnees
+    (90.0, 48.0, False),     # fournisseur / service
+    (139.0, 47.0, False),    # couche ou reference technique
+)
+
+# (theme, jeu de donnees, fournisseur et service, couche ou reference
+# technique) - une ligne par jeu de donnees que le pipeline peut interroger,
+# qu'il ait ete demande ou non sur ce bassin precis. Un chiffre du rapport
+# qui ne remonterait pas jusqu'ici serait un chiffre dont personne ne saurait
+# dire d'ou il vient ; la table est donc tenue a la main, a cote de
+# core.datasets, plutot que devinee a partir de ce qu'un bassin a rendu.
+SOURCES = (
+    ("Relief", "MNT RGE ALTI, maille 5 m",
+     "IGN — Géoplateforme, WMS (BIL 32 bits)",
+     "ELEVATION.ELEVATIONGRIDCOVERAGE.HIGHRES"),
+    ("Hydrographie", "Tronçons et bassins versants topographiques BD TOPO",
+     "IGN — Géoplateforme, WFS",
+     "BDTOPO_V3:troncon_hydrographique, bassin_versant_topographique"),
+    ("Hydrographie", "Obstacles à l'écoulement (ROE)",
+     "Sandre (eaufrance) — WFS 1.1", "sa:ObstEcoul"),
+    ("Hydrographie", "Sites hydrométriques",
+     "Sandre (eaufrance) — WFS 1.1", "sa:SiteHydro"),
+    ("Hydrographie", "Stations de traitement des eaux usées (STEU)",
+     "Sandre (eaufrance) — WFS 1.1", "sa:SysTraitementEauxUsees"),
+    ("Occupation du sol", "Bâti et zones d'habitation BD TOPO",
+     "IGN — Géoplateforme, WFS",
+     "BDTOPO_V3:batiment, BDTOPO_V3:zone_d_habitation"),
+    ("Occupation du sol", "Formations forestières BD Forêt v2",
+     "IGN — Géoplateforme, WFS",
+     "LANDCOVER.FORESTINVENTORY.V2:formation_vegetale"),
+    ("Occupation du sol", "Corine Land Cover 2018",
+     "Géoplateforme, WFS", "LANDCOVER.CLC18_FR:clc18_fr"),
+    ("Agriculture (PAC)", "RPG — parcelles et codes cultures",
+     "ASP/IGN — Géoplateforme, WFS",
+     "RPG.LATEST:parcelles_graphiques, RPG.LATEST:codes_cultures"),
+    ("Agriculture (PAC)", "RPG catégorisé — bio et conversion, millésime 2024",
+     "Géoplateforme, WFS",
+     "IGNF_RPG_PARCELLES-AGRICOLES-CATEGORISEES_2024"),
+    ("Agriculture (PAC)", "Prairies sensibles BCAE",
+     "Géoplateforme, WFS", "PRAIRIES.SENSIBLES.BCAE:prairies_sensibles"),
+    ("Agriculture (PAC)", "Aires AOC viticoles",
+     "Géoplateforme, WFS", "AOC-VITICOLES:aire_parcellaire"),
+    ("Zonages environnementaux",
+     "ZNIEFF I et II, ZSC, ZPS, arrêté de protection de biotope, réserves "
+     "naturelles nationale et régionale, parc naturel régional, Ramsar",
+     "INPN / Patrinat — Géoplateforme, WFS",
+     "patrinat_znieff1, patrinat_znieff2, patrinat_sic, patrinat_zps, "
+     "patrinat_apb, patrinat_rnn, patrinat_rnr, patrinat_pnr, "
+     "patrinat_ramsar"),
+    ("Zonages environnementaux", "Zones humides et tourbières BCAE",
+     "Géoplateforme, WFS", "TOURBIERES_ZONES-HUMIDES.BCAE:bcae"),
+    ("Zonages environnementaux", "Zones vulnérables aux nitrates",
+     "Sandre (eaufrance) — WFS 1.1", "sa:ZoneVuln_delimitation_FXX"),
+    ("Zonages environnementaux", "Zones sensibles à l'eutrophisation",
+     "Sandre (eaufrance) — WFS 1.1", "sa:ZoneSensible_FXX_ZRPE_2"),
+    ("Masses d'eau", "Masse d'eau de surface et bassin versant spécifique",
+     "Sandre (eaufrance) — WFS 1.1",
+     "sa:MasseDEauRiviere_VRAP2022_FXX, "
+     "sa:BVSpeMasseDEauSurface_VEDL2019_FXX"),
+    ("Masses d'eau", "Masse d'eau souterraine",
+     "Sandre (eaufrance) — WFS 1.1", "sa:MasseDEauSouterraine_VEDL2019_FXX"),
+    ("Masses d'eau", "Hydroécorégions de niveau 1 et 2",
+     "Sandre (eaufrance) — WFS 1.1",
+     "sa:Hydroecoregion1_FXX, sa:Hydroecoregion2_FXX"),
+    ("Population", "Logements du bâti (nombre_de_logements)",
+     "IGN — Géoplateforme, WFS", "BDTOPO_V3:batiment"),
+    ("Population", "Communes et population officielle",
+     "IGN — Géoplateforme, WFS", "ADMINEXPRESS-COG.LATEST:commune"),
+    ("Hydrographie", "Prélèvements d'eau (BNPE)",
+     "Hub'Eau — API REST (Office français de la biodiversité)",
+     "prelevements/chroniques"),
+    ("Fond de carte", "Plan IGN v2",
+     "IGN — Géoplateforme, WMTS", "GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2"),
+)
+
+
+def _build_sources_page(layout, title):
+    """Page finale listant l'origine de chaque donnee du rapport.
+
+    A la difference des pages de detail, elle ne depend d'aucun resultat : le
+    bassin le plus depouille - un contour sans obstacle ni zonage - a autant
+    besoin de savoir d'ou vient son MNT qu'un bassin qui remplit dix pages de
+    detail. Elle sort donc toujours, en derniere page.
+    """
+    from qgis.core import QgsLayoutItemPage
+
+    page_item = QgsLayoutItemPage(layout)
+    page_item.setPageSize(QgsLayoutSize(A4_WIDTH, A4_HEIGHT, MM))
+    layout.pageCollection().addPage(page_item)
+    index = layout.pageCollection().pageCount() - 1
+    _details_header(layout, index, title, first=True, heading=SOURCES_TITLE)
+
+    cursor = _Cursor(layout, index, title, heading=SOURCES_TITLE)
+    cursor.paragraph(
+        "Chaque jeu de données que ce traitement peut interroger, qu'il ait "
+        "été demandé ou non sur ce bassin précis. Les services IGN "
+        "Géoplateforme et Sandre (eaufrance) sont interrogés sans clé "
+        "d'API, en lecture seule.")
+    cursor.y += 2.0
+    cursor.columns(SOURCES_COLUMNS,
+                   ("Thème", "Jeu de données", "Fournisseur / service",
+                    "Couche ou référence technique"))
+    for theme, dataset, provider, layer_ref in SOURCES:
+        cursor.row(SOURCES_COLUMNS, (theme, dataset, provider, layer_ref))
+    cursor.y += 1.5
+    cursor.paragraph(
+        "Les normes de rejet des stations de traitement (STEU) ne sont pas "
+        "rapatriées : n'existant nulle part en donnée ouverte station par "
+        "station, elles sont calculées à partir de la capacité et de la "
+        "zone sensible de chaque station, d'après l'arrêté du 21 juillet "
+        "2015 relatif aux systèmes d'assainissement collectif. L'arrêté "
+        "préfectoral propre à chaque ouvrage peut être plus strict, jamais "
+        "plus permissif.", size=6.5)
+    cursor.y += 1.0
+    cursor.paragraph(
+        "La population du bassin, quand elle figure dans la section STEU, "
+        "est une estimation et non un recensement. Pour chaque commune "
+        "recoupant le bassin : le nombre de logements du bâti BD TOPO dans "
+        "la part de la commune comprise dans le bassin est rapporté au "
+        "nombre de logements de la commune entière ; cette part est "
+        "appliquée à la population officielle de la commune (attribut "
+        "ADMIN EXPRESS COG). Les logements comptent, non les bâtiments : un "
+        "garage ou un hangar agricole porte zéro logement, l'IGN le "
+        "calculant à partir des seules parties d'évaluation cadastrale "
+        "marquées habitation, ce qui évite de surestimer la population par "
+        "le bâti annexe. La méthode suppose la densité de logements "
+        "comparable dans et hors bassin, hypothèse fragile près d'un "
+        "bourg-centre à cheval sur la limite communale.", size=6.5)
+    cursor.y += 1.0
+    cursor.paragraph(
+        "Les prélèvements d'eau ne mesurent que ce qu'Hub'Eau publie : le "
+        "service ne filtre pas par emprise géographique, seulement par "
+        "commune, si bien que le relevé part des communes qui recoupent le "
+        "bassin puis ne garde que les ouvrages dont le point tombe "
+        "réellement dedans. Chaque ouvrage porte plusieurs années "
+        "déclarées ; seule la plus récente connue est retenue, qui peut "
+        "dater de plusieurs années selon l'ouvrage — l'année retenue "
+        "figure sur chaque ligne du relevé.", size=6.5)
+
+    _details_footers(
+        layout, cursor.pages,
+        note="Fond de plan : Plan IGN v2 (Géoplateforme).")
 
 
 def _split_leftovers(leftovers):
@@ -1329,6 +1514,129 @@ def _fill_obstacles(cursor, roe, context=None):
         # Ce reste n'existe que si le referentiel a rendu plus d'ouvrages que
         # le plafond de core.obstacles : la page, elle, ne tronque plus rien.
         cursor.note("… et {0} ouvrage(s) au-dela du plafond de relevé."
+                    .format(reste))
+
+
+def _fill_steu(cursor, steu, population=None, values=None, context=None):
+    """Bilan des STEU du bassin, la population estimee, puis les stations."""
+    if not steu or not steu.get("nb"):
+        return
+
+    cursor.section("Stations de traitement des eaux usées (STEU)",
+                   _map_reserve(context, "steu"), page_break=True)
+    _section_map(cursor, context, (context or {}).get("steu"),
+                 "Stations de traitement des eaux usées",
+                 support=((context or {}).get("reseau"),))
+    cursor.pair("Stations recensées dans le bassin", steu["nb"])
+    cursor.pair("Dont en service", steu.get("nb_en_service"))
+    if steu.get("capacite_totale_eh") is not None:
+        cursor.pair(
+            "Capacité nominale cumulée (EH)",
+            "{0} sur {1} station(s) renseignée(s)".format(
+                _number(steu["capacite_totale_eh"], 0),
+                steu.get("nb_capacite_connue") or 0))
+    if steu.get("capacite_max_eh") is not None:
+        cursor.pair("Plus grosse station (EH)",
+                    _number(steu["capacite_max_eh"], 0))
+    cursor.pair("Dont ≥ 2 000 EH", steu.get("nb_sup_2000_eh"))
+    cursor.pair("Dont rejetant en zone sensible à l'eutrophisation",
+                steu.get("nb_zone_sensible"))
+    cursor.pair("Dont avec autosurveillance en place",
+                steu.get("nb_avec_autosurv"))
+
+    # La population n'est montree qu'ici, comme point de comparaison a la
+    # capacite des stations : ce n'est pas un recensement, et la faire
+    # figurer au recap general du bassin lui preterait une exactitude
+    # qu'elle n'a pas. Voir la methode en derniere page du rapport.
+    estimee = (population or {}).get("population_estimee")
+    if estimee is not None:
+        cursor.y += 1.5
+        cursor.pair(
+            "Population estimée du bassin",
+            "{0} habitant(s), sur {1} commune(s) sur {2} recoupées"
+            .format(_number(estimee, 0),
+                    population.get("nb_communes_estimees") or 0,
+                    population.get("nb_communes") or 0))
+        surface_km2 = (values or {}).get("surface_km2")
+        if surface_km2:
+            cursor.pair("Densité de population estimée (hab./km²)",
+                        _number(estimee / surface_km2, 1))
+        lin_hydro_km = (values or {}).get("lin_hydro_km")
+        if lin_hydro_km:
+            cursor.pair(
+                "Population estimée par km de cours d'eau (hab./km)",
+                _number(estimee / lin_hydro_km, 1))
+        if steu.get("capacite_totale_eh"):
+            cursor.pair(
+                "Capacité STEU cumulée pour cette population (EH/habitant)",
+                _number(steu["capacite_totale_eh"] / estimee, 2))
+        cursor.note("Estimation, non un recensement — méthode en dernière "
+                    "page du rapport.")
+
+    stations = steu.get("stations") or []
+    if not stations:
+        return
+    cursor.y += 1.5
+    cursor.columns(STEU_COLUMNS, ("Code Sandre", "Station", "Capacité (EH)",
+                                  "Taux de charge (%)", "Commune",
+                                  "Autosurveillance"))
+    for station in stations:
+        cursor.row(STEU_COLUMNS, (
+            station["code"], station["nom"] or "—",
+            _number(station["capacite_eh"], 0),
+            _number(station["taux_charge_pct"], 0),
+            station["commune"] or "—",
+            station["autosurveillance"] or "non renseigné",
+        ))
+    reste = steu["nb"] - len(stations)
+    if reste > 0:
+        # Ce reste n'existe que si le referentiel a rendu plus de stations que
+        # le plafond de core.steu.
+        cursor.note("… et {0} station(s) au-delà du plafond de relevé."
+                    .format(reste))
+
+
+def _fill_prelevements(cursor, prelevements, context=None):
+    """Bilan des prelevements d'eau, par usage, puis les ouvrages un a un."""
+    if not prelevements or not prelevements.get("nb"):
+        return
+
+    cursor.section("Prélèvements d'eau",
+                   _map_reserve(context, "prelevements"), page_break=True)
+    _section_map(cursor, context, (context or {}).get("prelevements"),
+                 "Prélèvements d'eau",
+                 support=((context or {}).get("reseau"),))
+    cursor.pair("Ouvrages recensés dans le bassin", prelevements["nb"])
+    if prelevements.get("volume_total_m3") is not None:
+        cursor.pair("Volume annuel cumulé (m³)",
+                    _number(prelevements["volume_total_m3"], 0))
+    if prelevements.get("annee_recente") is not None:
+        cursor.pair("Année la plus récente connue",
+                    prelevements["annee_recente"])
+
+    for usage in prelevements.get("par_usage") or []:
+        cursor.pair(usage["usage"], "{0} m³/an".format(
+            _number(usage["volume_m3"], 0)))
+
+    ouvrages = prelevements.get("ouvrages") or []
+    if not ouvrages:
+        return
+    cursor.y += 1.5
+    cursor.columns(PRELEVEMENT_COLUMNS, ("Ouvrage", "Usage", "Volume (m³/an)",
+                                         "Année", "Commune"))
+    for ouvrage in ouvrages:
+        cursor.row(PRELEVEMENT_COLUMNS, (
+            ouvrage["nom"] or ouvrage["code"] or "—",
+            ouvrage["usage"] or "non renseigné",
+            _number(ouvrage["volume_m3"], 0),
+            ouvrage["annee"],
+            ouvrage["commune"] or "—",
+        ))
+    reste = prelevements["nb"] - len(ouvrages)
+    if reste > 0:
+        # Ce reste n'existe que si le service a rendu plus d'ouvrages que le
+        # plafond de core.prelevements.
+        cursor.note("… et {0} ouvrage(s) au-delà du plafond de relevé."
                     .format(reste))
 
 

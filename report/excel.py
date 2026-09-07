@@ -168,7 +168,8 @@ def _insert_image(sheet, path, anchor, width_px=None, height_px=None):
 
 def build_workbook(values, land_cover, streams_layer, charts_paths, map_image,
                    output_path, title, subtitle, protected=None,
-                   structures=None):
+                   structures=None, steu=None, population=None,
+                   prelevements=None):
     """Ecrit le classeur et renvoie son chemin, ou None si openpyxl manque."""
     if not available():
         return None
@@ -242,7 +243,7 @@ def build_workbook(values, land_cover, streams_layer, charts_paths, map_image,
     sheet["A{0}".format(row)] = (
         "Produit par BVLIP le {0}. Sources : RGE ALTI, BD TOPO et BD Forêt "
         "v2 (IGN), Corine Land Cover 2018, zonages INPN / Patrinat, "
-        "référentiels Sandre (masses d'eau, hydroécorégions, ROE), "
+        "référentiels Sandre (masses d'eau, hydroécorégions, ROE, STEU), "
         "fond de plan IGN v2.".format(
             datetime.now().strftime("%d/%m/%Y à %H:%M"))
     )
@@ -252,6 +253,9 @@ def build_workbook(values, land_cover, streams_layer, charts_paths, map_image,
     _sheet_land_cover(book, land_cover, styles)
     _sheet_protected(book, protected, styles)
     _sheet_obstacles(book, structures, styles)
+    _sheet_steu(book, steu, styles, population, values)
+    _sheet_prelevements(book, prelevements, styles)
+    _sheet_sources(book, styles)
     _sheet_streams(book, streams_layer, styles)
 
     book.save(output_path)
@@ -463,6 +467,276 @@ def _sheet_obstacles(book, structures, styles):
             row += 1
 
     _setup_a4(sheet, row, "H")
+
+
+def _sheet_steu(book, steu, styles, population=None, values=None):
+    """Releve des stations de traitement des eaux usees (STEU)."""
+    stations = (steu or {}).get("stations") or []
+    if not stations:
+        return
+    sheet = book.create_sheet("STEU")
+    sheet.sheet_view.showGridLines = False
+    for column, width in (("A", 14), ("B", 40), ("C", 14), ("D", 16),
+                          ("E", 14), ("F", 30), ("G", 12), ("H", 14),
+                          ("I", 24), ("J", 18), ("K", 22), ("L", 20)):
+        sheet.column_dimensions[column].width = width
+
+    row = 1
+    # La population n'est qu'une estimation, comme point de comparaison a la
+    # capacite cumulee des stations : voir la methode dans l'onglet Sources.
+    estimee = (population or {}).get("population_estimee")
+    if estimee is not None:
+        sheet["A{0}".format(row)] = "Population estimée du bassin"
+        sheet["A{0}".format(row)].font = styles["section"]
+        row += 1
+        sheet["A{0}".format(row)] = "Population estimée (habitants)"
+        sheet["B{0}".format(row)] = estimee
+        sheet["B{0}".format(row)].number_format = "0"
+        row += 1
+        surface_km2 = (values or {}).get("surface_km2")
+        if surface_km2:
+            sheet["A{0}".format(row)] = "Densité estimée (hab./km²)"
+            sheet["B{0}".format(row)] = estimee / surface_km2
+            sheet["B{0}".format(row)].number_format = "0.0"
+            row += 1
+        lin_hydro_km = (values or {}).get("lin_hydro_km")
+        if lin_hydro_km:
+            sheet["A{0}".format(row)] = (
+                "Population estimée par km de cours d'eau (hab./km)")
+            sheet["B{0}".format(row)] = estimee / lin_hydro_km
+            sheet["B{0}".format(row)].number_format = "0.0"
+            row += 1
+        if (steu or {}).get("capacite_totale_eh"):
+            sheet["A{0}".format(row)] = (
+                "Capacité STEU cumulée pour cette population (EH/habitant)")
+            sheet["B{0}".format(row)] = (
+                steu["capacite_totale_eh"] / estimee)
+            sheet["B{0}".format(row)].number_format = "0.00"
+            row += 1
+        row += 1
+
+    for column, label in (
+        ("A", "Code Sandre"), ("B", "Nom de la station"),
+        ("C", "Capacité (EH)"), ("D", "Charge max. entrante (EH)"),
+        ("E", "Taux de charge (%)"), ("F", "Nature du traitement"),
+        ("G", "En service"), ("H", "Zone sensible"),
+        ("I", "Nom de la zone sensible"), ("J", "Autosurveillance"),
+        ("K", "Conformité autosurveillance"), ("L", "Commune"),
+    ):
+        cell = sheet["{0}{1}".format(column, row)]
+        cell.value = label
+        cell.font = styles["section"]
+        cell.fill = styles["band"]
+    row += 1
+    for station in stations:
+        sheet["A{0}".format(row)] = station["code"]
+        sheet["B{0}".format(row)] = station["nom"]
+        sheet["C{0}".format(row)] = station["capacite_eh"]
+        sheet["D{0}".format(row)] = station["charge_max_eh"]
+        sheet["E{0}".format(row)] = station["taux_charge_pct"]
+        sheet["E{0}".format(row)].number_format = "0.0"
+        sheet["F{0}".format(row)] = station["nature"]
+        sheet["G{0}".format(row)] = (
+            "oui" if station["en_service"] else "non"
+        )
+        zone_sensible = station["zone_sensible"]
+        sheet["H{0}".format(row)] = (
+            "non renseigné" if zone_sensible is None else
+            ("oui" if zone_sensible else "non")
+        )
+        sheet["I{0}".format(row)] = station["nom_zone_sensible"]
+        sheet["J{0}".format(row)] = station["autosurveillance"]
+        sheet["K{0}".format(row)] = station["conformite_autosurv"]
+        sheet["L{0}".format(row)] = station["commune"]
+        for column in "ABCDEFGHIJKL":
+            sheet["{0}{1}".format(column, row)].border = styles["rule"]
+        row += 1
+
+    _setup_a4(sheet, row, "L")
+
+
+def _sheet_prelevements(book, prelevements, styles):
+    """Releve des ouvrages de prelevement d'eau (Hub'Eau / BNPE)."""
+    ouvrages = (prelevements or {}).get("ouvrages") or []
+    if not ouvrages:
+        return
+    sheet = book.create_sheet("Prélèvements")
+    sheet.sheet_view.showGridLines = False
+    for column, width in (("A", 40), ("B", 40), ("C", 18), ("D", 10),
+                          ("E", 24)):
+        sheet.column_dimensions[column].width = width
+
+    row = 1
+    for column, label in (("A", "Ouvrage"), ("B", "Usage"),
+                          ("C", "Volume (m³/an)"), ("D", "Année"),
+                          ("E", "Commune")):
+        cell = sheet["{0}{1}".format(column, row)]
+        cell.value = label
+        cell.font = styles["section"]
+        cell.fill = styles["band"]
+    row += 1
+    for ouvrage in ouvrages:
+        sheet["A{0}".format(row)] = ouvrage["nom"] or ouvrage["code"]
+        sheet["B{0}".format(row)] = ouvrage["usage"]
+        sheet["C{0}".format(row)] = ouvrage["volume_m3"]
+        sheet["C{0}".format(row)].number_format = "0"
+        sheet["D{0}".format(row)] = ouvrage["annee"]
+        sheet["E{0}".format(row)] = ouvrage["commune"]
+        for column in "ABCDE":
+            sheet["{0}{1}".format(column, row)].border = styles["rule"]
+        row += 1
+
+    _setup_a4(sheet, row, "E")
+
+
+# (theme, jeu de donnees, fournisseur et service, couche ou reference
+# technique) - une ligne par jeu de donnees que le pipeline peut interroger,
+# qu'il ait ete demande ou non sur ce bassin precis. Reprise a l'identique de
+# report.layout : le classeur ne peut pas l'importer de la, ce module devant
+# rester utilisable sans QGIS (voir l'en-tete du fichier), mais les deux
+# doivent rester d'accord, ce que tools/check_fields verifie.
+SOURCES = (
+    ("Relief", "MNT RGE ALTI, maille 5 m",
+     "IGN — Géoplateforme, WMS (BIL 32 bits)",
+     "ELEVATION.ELEVATIONGRIDCOVERAGE.HIGHRES"),
+    ("Hydrographie", "Tronçons et bassins versants topographiques BD TOPO",
+     "IGN — Géoplateforme, WFS",
+     "BDTOPO_V3:troncon_hydrographique, bassin_versant_topographique"),
+    ("Hydrographie", "Obstacles à l'écoulement (ROE)",
+     "Sandre (eaufrance) — WFS 1.1", "sa:ObstEcoul"),
+    ("Hydrographie", "Sites hydrométriques",
+     "Sandre (eaufrance) — WFS 1.1", "sa:SiteHydro"),
+    ("Hydrographie", "Stations de traitement des eaux usées (STEU)",
+     "Sandre (eaufrance) — WFS 1.1", "sa:SysTraitementEauxUsees"),
+    ("Occupation du sol", "Bâti et zones d'habitation BD TOPO",
+     "IGN — Géoplateforme, WFS",
+     "BDTOPO_V3:batiment, BDTOPO_V3:zone_d_habitation"),
+    ("Occupation du sol", "Formations forestières BD Forêt v2",
+     "IGN — Géoplateforme, WFS",
+     "LANDCOVER.FORESTINVENTORY.V2:formation_vegetale"),
+    ("Occupation du sol", "Corine Land Cover 2018",
+     "Géoplateforme, WFS", "LANDCOVER.CLC18_FR:clc18_fr"),
+    ("Agriculture (PAC)", "RPG — parcelles et codes cultures",
+     "ASP/IGN — Géoplateforme, WFS",
+     "RPG.LATEST:parcelles_graphiques, RPG.LATEST:codes_cultures"),
+    ("Agriculture (PAC)", "RPG catégorisé — bio et conversion, millésime 2024",
+     "Géoplateforme, WFS",
+     "IGNF_RPG_PARCELLES-AGRICOLES-CATEGORISEES_2024"),
+    ("Agriculture (PAC)", "Prairies sensibles BCAE",
+     "Géoplateforme, WFS", "PRAIRIES.SENSIBLES.BCAE:prairies_sensibles"),
+    ("Agriculture (PAC)", "Aires AOC viticoles",
+     "Géoplateforme, WFS", "AOC-VITICOLES:aire_parcellaire"),
+    ("Zonages environnementaux",
+     "ZNIEFF I et II, ZSC, ZPS, arrêté de protection de biotope, réserves "
+     "naturelles nationale et régionale, parc naturel régional, Ramsar",
+     "INPN / Patrinat — Géoplateforme, WFS",
+     "patrinat_znieff1, patrinat_znieff2, patrinat_sic, patrinat_zps, "
+     "patrinat_apb, patrinat_rnn, patrinat_rnr, patrinat_pnr, "
+     "patrinat_ramsar"),
+    ("Zonages environnementaux", "Zones humides et tourbières BCAE",
+     "Géoplateforme, WFS", "TOURBIERES_ZONES-HUMIDES.BCAE:bcae"),
+    ("Zonages environnementaux", "Zones vulnérables aux nitrates",
+     "Sandre (eaufrance) — WFS 1.1", "sa:ZoneVuln_delimitation_FXX"),
+    ("Zonages environnementaux", "Zones sensibles à l'eutrophisation",
+     "Sandre (eaufrance) — WFS 1.1", "sa:ZoneSensible_FXX_ZRPE_2"),
+    ("Masses d'eau", "Masse d'eau de surface et bassin versant spécifique",
+     "Sandre (eaufrance) — WFS 1.1",
+     "sa:MasseDEauRiviere_VRAP2022_FXX, "
+     "sa:BVSpeMasseDEauSurface_VEDL2019_FXX"),
+    ("Masses d'eau", "Masse d'eau souterraine",
+     "Sandre (eaufrance) — WFS 1.1", "sa:MasseDEauSouterraine_VEDL2019_FXX"),
+    ("Masses d'eau", "Hydroécorégions de niveau 1 et 2",
+     "Sandre (eaufrance) — WFS 1.1",
+     "sa:Hydroecoregion1_FXX, sa:Hydroecoregion2_FXX"),
+    ("Population", "Logements du bâti (nombre_de_logements)",
+     "IGN — Géoplateforme, WFS", "BDTOPO_V3:batiment"),
+    ("Population", "Communes et population officielle",
+     "IGN — Géoplateforme, WFS", "ADMINEXPRESS-COG.LATEST:commune"),
+    ("Hydrographie", "Prélèvements d'eau (BNPE)",
+     "Hub'Eau — API REST (Office français de la biodiversité)",
+     "prelevements/chroniques"),
+    ("Fond de carte", "Plan IGN v2",
+     "IGN — Géoplateforme, WMTS", "GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2"),
+)
+
+
+def _sheet_sources(book, styles):
+    """Origine de chaque jeu de donnees et methode, derniere feuille."""
+    sheet = book.create_sheet("Sources et méthode")
+    sheet.sheet_view.showGridLines = False
+    for column, width in (("A", 24), ("B", 46), ("C", 34), ("D", 46)):
+        sheet.column_dimensions[column].width = width
+
+    row = 1
+    for column, label in (("A", "Thème"), ("B", "Jeu de données"),
+                          ("C", "Fournisseur / service"),
+                          ("D", "Couche ou référence technique")):
+        cell = sheet["{0}{1}".format(column, row)]
+        cell.value = label
+        cell.font = styles["section"]
+        cell.fill = styles["band"]
+    row += 1
+    for theme, dataset, provider, layer_ref in SOURCES:
+        sheet["A{0}".format(row)] = theme
+        sheet["B{0}".format(row)] = dataset
+        sheet["C{0}".format(row)] = provider
+        sheet["D{0}".format(row)] = layer_ref
+        for column in "ABCD":
+            cell = sheet["{0}{1}".format(column, row)]
+            cell.border = styles["rule"]
+            cell.alignment = styles["left"]
+        row += 1
+    row += 1
+
+    sheet["A{0}".format(row)] = (
+        "Les normes de rejet des stations de traitement (STEU) ne sont pas "
+        "rapatriées : n'existant nulle part en donnée ouverte station par "
+        "station, elles sont calculées à partir de la capacité et de la "
+        "zone sensible de chaque station, d'après l'arrêté du 21 juillet "
+        "2015 relatif aux systèmes d'assainissement collectif. L'arrêté "
+        "préfectoral propre à chaque ouvrage peut être plus strict, jamais "
+        "plus permissif."
+    )
+    sheet["A{0}".format(row)].font = styles["footer"]
+    sheet["A{0}".format(row)].alignment = styles["left"]
+    sheet.row_dimensions[row].height = 42
+    row += 2
+
+    sheet["A{0}".format(row)] = (
+        "La population du bassin, quand elle figure dans l'onglet STEU, "
+        "est une estimation et non un recensement. Pour chaque commune "
+        "recoupant le bassin : le nombre de logements du bâti BD TOPO dans "
+        "la part de la commune comprise dans le bassin est rapporté au "
+        "nombre de logements de la commune entière ; cette part est "
+        "appliquée à la population officielle de la commune (attribut "
+        "ADMIN EXPRESS COG). Les logements comptent, non les bâtiments : un "
+        "garage ou un hangar agricole porte zéro logement, l'IGN le "
+        "calculant à partir des seules parties d'évaluation cadastrale "
+        "marquées habitation, ce qui évite de surestimer la population par "
+        "le bâti annexe. La méthode suppose la densité de logements "
+        "comparable dans et hors bassin, hypothèse fragile près d'un "
+        "bourg-centre à cheval sur la limite communale."
+    )
+    sheet["A{0}".format(row)].font = styles["footer"]
+    sheet["A{0}".format(row)].alignment = styles["left"]
+    sheet.row_dimensions[row].height = 56
+    row += 2
+
+    sheet["A{0}".format(row)] = (
+        "Les prélèvements d'eau ne mesurent que ce qu'Hub'Eau publie : le "
+        "service ne filtre pas par emprise géographique, seulement par "
+        "commune, si bien que le relevé part des communes qui recoupent le "
+        "bassin puis ne garde que les ouvrages dont le point tombe "
+        "réellement dedans. Chaque ouvrage porte plusieurs années "
+        "déclarées ; seule la plus récente connue est retenue, qui peut "
+        "dater de plusieurs années selon l'ouvrage — l'année retenue "
+        "figure sur chaque ligne du relevé, onglet Prélèvements."
+    )
+    sheet["A{0}".format(row)].font = styles["footer"]
+    sheet["A{0}".format(row)].alignment = styles["left"]
+    sheet.row_dimensions[row].height = 42
+
+    _setup_a4(sheet, row, "D")
 
 
 def _sheet_streams(book, streams_layer, styles):

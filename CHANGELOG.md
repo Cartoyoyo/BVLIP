@@ -3,6 +3,92 @@
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le
 plugin la [gestion sémantique de version](https://semver.org/lang/fr/).
 
+## [1.1.0] - 2026-09-07
+
+### Ajouté
+
+- **Stations de traitement des eaux usées (STEU), avec leurs normes de rejet
+  calculées.** Le Sandre publie `sa:SysTraitementEauxUsees` : capacité
+  nominale en équivalents-habitants, charge maximale entrante, taux de
+  charge, autosurveillance et sa conformité, zone sensible de rejet. Ce que
+  le service ne donne pas, en revanche, ce sont les seuils de rejet : ils
+  n'existent nulle part en donnée ouverte station par station, les valeurs
+  opposables figurant dans l'arrêté préfectoral de chaque ouvrage, en PDF.
+
+  Ils sont donc **calculés** ici, d'après l'arrêté du 21 juillet 2015, à
+  partir de la seule capacité et de la zone sensible — deux entrées que la
+  couche donne. La nuance reste lisible dans le rapport : ce sont les seuils
+  réglementaires applicables à la classe de la station, un plancher national
+  que l'arrêté préfectoral de l'ouvrage peut resserrer, jamais assouplir.
+
+- **Population estimée du bassin, mise en regard de la capacité des STEU.**
+  Aucun recensement ne dit combien d'habitants vivent dans un bassin
+  versant : la population est un attribut communal, et un bassin recoupe
+  rarement une commune en entier. L'estimation part donc des communes ADMIN
+  EXPRESS (IGN) qui recoupent le bassin, et pour chacune : le nombre de
+  logements du bâti BD TOPO dans la part du bassin qui la touche, rapporté
+  au nombre de logements de la commune entière, appliqué à sa population
+  officielle.
+
+  Le compte porte sur les **logements** (`nombre_de_logements`), pas sur les
+  bâtiments : un garage ou un hangar agricole n'en compte aucun, l'IGN le
+  calculant à partir des seules parties d'évaluation cadastrale marquées
+  habitation — ce qui évite de surestimer la population par le bâti annexe,
+  nombreux sur un bassin rural.
+
+  Testé sur le bassin du Sichon à Cusset (233,6 km², 23 communes touchées) :
+  **23 712 habitants estimés**, dont Cusset à 94,3 % de son bâti dans le
+  bassin (≈ 12 554 hab.) et Vichy à seulement 24,9 % (≈ 6 248 hab.) — cohérent
+  avec un bassin qui n'emporte qu'une frange de l'agglomération. Sur un
+  petit bassin rural amont, près de Ferrières-sur-Sichon (25,6 km²,
+  6 communes) : 334 habitants estimés, soit une densité dix fois moindre —
+  la méthode répond juste dans les deux cas de figure.
+
+  Un premier essai avait donné une estimation aberrante, très supérieure à
+  la population réelle du secteur : la couche ADMIN EXPRESS COG expose ses
+  champs sous les noms `code_insee` et `nom_officiel`, pas `insee_com` et
+  `nom` comme documenté ailleurs. Le code de commune valait donc `None` pour
+  toutes les communes, et tous les logements du bassin s'accumulaient dans
+  un seul panier au lieu d'être répartis — chaque commune héritait du total
+  du bassin entier. Corrigé et revérifié avant publication.
+
+- **Prélèvements d'eau (Hub'Eau / BNPE), pour mesurer la pression en amont.**
+  Les STEU disent ce qui est rendu au milieu ; les prélèvements disent ce
+  qui en est retiré — eau potable, irrigation, industrie, énergie. Hub'Eau
+  ne filtre pas par emprise géographique, seulement par commune : le relevé
+  part donc des mêmes communes ADMIN EXPRESS que la population, puis ne
+  garde que les ouvrages dont le point (reprojeté depuis le WGS84 du
+  service) tombe réellement dans le bassin. Un ouvrage porte plusieurs
+  années déclarées ; seule la plus récente connue est retenue, comme la
+  charge d'une STEU ne retient que son dernier relevé d'autosurveillance.
+
+- **Page « Sources et méthode », toujours en fin de rapport.** Un tableau
+  exhaustif des jeux de données que le traitement peut interroger — thème,
+  fournisseur, service technique, couche ou référence exacte — que le
+  bassin les ait sollicités ou non, pour que le lecteur puisse remonter à la
+  source sans relire le code. Complété par les notes de méthode qu'un
+  tableau ne peut pas porter : calcul des normes STEU, estimation de
+  population, limites du filtrage des prélèvements par commune. La même
+  table, à l'identique, alimente le PDF et l'onglet « Sources et méthode »
+  du classeur — un contrôle de non-régression le vérifie avant publication.
+
+- **Vue 3D enrichie** : drapé des couches (BD Forêt, parcelles PAC) sur le
+  bloc-diagramme, export en image ou en GLB pour un logiciel de
+  modélisation, panneau de commandes réorganisé par fonction. Le réseau
+  hydrographique s'y épaissit désormais selon l'**ordre de Strahler** du
+  tronçon — calculé sans récursion pour tenir sur un réseau de plusieurs
+  milliers de tronçons — si bien que le collecteur principal se distingue
+  d'un affluent de tête de bassin, ce qu'une épaisseur unique ne permettait
+  pas.
+
+### Modifié
+
+- **Dix couches en mémoire au lieu de huit** : les stations de traitement et
+  les prélèvements d'eau rejoignent le sous-groupe Hydrographie, aux côtés
+  du chevelu et des obstacles à l'écoulement.
+- **142 champs au lieu de 134** dans la couche du bassin, avec le récapitulatif
+  STEU et prélèvements dans la section Hydrographie du rapport.
+
 ## [1.0.1] - 2026-09-05
 
 ### Corrigé

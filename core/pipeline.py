@@ -17,7 +17,7 @@ import time
 
 from . import (
     agriculture, dem, delineation, landcover, metrics, network, obstacles,
-    protected, relief, waterbody,
+    population, prelevements, protected, relief, steu, waterbody,
 )
 from . import datasets as catalogue
 from .delineation import CONTAINMENT_MIN
@@ -309,6 +309,9 @@ def _run(x, y, options, progress, feedback, cancelled, resume):
         "agriculture": None,
         "protected": None,
         "structures": None,
+        "steu": None,
+        "population": None,
+        "prelevements": None,
         "avertissements": [],
         "affinage": None,
         "relief": None,
@@ -501,6 +504,60 @@ def _run(x, y, options, progress, feedback, cancelled, resume):
         except Exception as exc:
             result["avertissements"].append(
                 "Obstacles a l'ecoulement non releves : {0}".format(exc)
+            )
+
+    if stop():
+        return result
+
+    if options.wants("steu"):
+        step(9, "Stations de traitement des eaux usees")
+        try:
+            values = steu.compute(
+                delineation_result["geometry"],
+                progress=lambda m: step(9, m),
+            )
+            result["steu"] = values.get("steu")
+            for message in values.get("erreurs") or ():
+                result["avertissements"].append(message)
+        except Exception as exc:
+            result["avertissements"].append(
+                "Stations de traitement non relevees : {0}".format(exc)
+            )
+
+    if stop():
+        return result
+
+    if options.wants("population"):
+        step(9, "Population estimée")
+        try:
+            values = population.compute(
+                delineation_result["geometry"],
+                progress=lambda m: step(9, m),
+            )
+            result["population"] = values.get("population")
+            for message in values.get("erreurs") or ():
+                result["avertissements"].append(message)
+        except Exception as exc:
+            result["avertissements"].append(
+                "Population non estimee : {0}".format(exc)
+            )
+
+    if stop():
+        return result
+
+    if options.wants("prelevements"):
+        step(9, "Prélèvements d'eau")
+        try:
+            values = prelevements.compute(
+                delineation_result["geometry"],
+                progress=lambda m: step(9, m),
+            )
+            result["prelevements"] = values.get("prelevements")
+            for message in values.get("erreurs") or ():
+                result["avertissements"].append(message)
+        except Exception as exc:
+            result["avertissements"].append(
+                "Prelevements d'eau non releves : {0}".format(exc)
             )
 
     return result

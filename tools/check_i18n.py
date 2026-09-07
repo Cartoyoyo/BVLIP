@@ -76,6 +76,33 @@ def catalogue_keys():
     return keys
 
 
+def habillage_keys():
+    """Cles de traduction commandees par la table des habillages 3D.
+
+    Meme cas que le catalogue des donnees : gui/view3d_dialog compose ses
+    cases a cocher a partir de HABILLAGE_OPTIONS et passe la cle par
+    variable, jamais en toutes lettres a tr(). Sans cette lecture, les cles
+    d'habillage seraient signalees comme jamais utilisees.
+
+    La table est lue par son arbre syntaxique et non importee : le module
+    tire QGIS avec lui.
+    """
+    path = os.path.join(PLUGIN_DIR, "gui", "view3d_dialog.py")
+    with open(path, encoding="utf-8") as handle:
+        tree = ast.parse(handle.read())
+
+    keys = set()
+    for node in tree.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        target = node.targets[0]
+        if isinstance(target, ast.Name) and target.id == "HABILLAGE_OPTIONS":
+            # (cle interne, cles de couches, cle de traduction du libelle)
+            for element in node.value.elts:
+                keys.add(element.elts[2].value)
+    return keys
+
+
 def main():
     i18n = load_i18n()
     codes = [code for code, _ in i18n.LANGUAGES]
@@ -89,7 +116,7 @@ def main():
             )
 
     declared = set(i18n.TR)
-    used = used_keys() | catalogue_keys()
+    used = used_keys() | catalogue_keys() | habillage_keys()
     for key in sorted(used - declared):
         problems.append("  {0} : utilisee dans le code, absente de TR".format(key))
     for key in sorted(declared - used):

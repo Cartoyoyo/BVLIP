@@ -149,6 +149,26 @@ BASIN_FIELDS = [
     ("hydro_codes", S, 200, 0, "hydrometrie.codes",
      "Sites hydrométriques — codes Sandre"),
 
+    # --- Stations de traitement des eaux usees (STEU)
+    ("steu_nb", INT, 8, 0, "steu.nb",
+     "Stations de traitement des eaux usées — nombre"),
+    ("steu_service_nb", INT, 8, 0, "steu.nb_en_service",
+     "Stations de traitement en service — nombre"),
+    ("steu_capa_tot_eh", D, 12, 0, "steu.capacite_totale_eh",
+     "Stations de traitement — capacité nominale cumulée (EH)"),
+    ("steu_sup2000_nb", INT, 8, 0, "steu.nb_sup_2000_eh",
+     "Stations de traitement ≥ 2 000 EH — nombre"),
+    ("steu_zonesens_nb", INT, 8, 0, "steu.nb_zone_sensible",
+     "Stations de traitement en zone sensible — nombre"),
+
+    # --- Prelevements d'eau
+    ("preleve_nb", INT, 8, 0, "prelevements.nb",
+     "Ouvrages de prélèvement d'eau — nombre"),
+    ("preleve_vol_m3", D, 14, 0, "prelevements.volume_total_m3",
+     "Prélèvements d'eau — volume annuel cumulé (m³)"),
+    ("preleve_an", INT, 6, 0, "prelevements.annee_recente",
+     "Prélèvements d'eau — année la plus récente connue"),
+
     # --- Occupation du sol
     ("ocs_dominante", S, 60, 0, "ocs.classe_dominante",
      "Occupation du sol dominante (Corine Land Cover 2018)"),
@@ -406,6 +426,74 @@ OBSTACLE_FIELDS = [
     ("cours_eau", S, 120, 0, None, "Cours d'eau barré"),
 ]
 
+# Stations de traitement des eaux usees, un point par ouvrage.
+#
+# Les champs "norme_*" ne sont pas rapatries : ils sont calcules d'apres
+# l'arrete du 21 juillet 2015, a partir de la capacite et de la zone
+# sensible - voir core/steu. Leur intitule le dit, parce qu'une valeur lue
+# dans une table attributaire perd toujours son contexte : ce sont les seuils
+# reglementaires applicables a la classe de la station, un plancher national
+# que l'arrete prefectoral de l'ouvrage peut resserrer.
+#
+# La conformite figure en attribut et ne colore rien : la taille du point dit
+# deja la capacite, et faire porter au meme symbole une seconde information
+# reglementaire donnerait a lire une carte de bons et de mauvais eleves la ou
+# le referentiel ne renseigne, sur beaucoup de petites stations, qu'une
+# absence d'autosurveillance.
+STEU_FIELDS = [
+    ("id_bv", S, 40, 0, None, "Identifiant du bassin"),
+    ("code", S, 20, 0, None, "Code Sandre de l'ouvrage"),
+    ("nom", S, 200, 0, None, "Nom de la station"),
+    ("capacite_eh", D, 12, 0, None, "Capacité nominale (EH)"),
+    ("charge_eh", D, 12, 0, None, "Charge maximale entrante (EH)"),
+    ("taux_charge", D, 8, 1, None, "Taux de charge (% de la capacité)"),
+    ("nature", S, 80, 0, None, "Nature du système de traitement"),
+    ("en_service", B, 1, 0, None, "Station en service"),
+    ("date_serv", S, 20, 0, None, "Date de mise en service"),
+    ("autosurv", S, 40, 0, None, "Autosurveillance en place"),
+    ("conformite", S, 60, 0, None, "Conformité à l'autosurveillance"),
+    ("zone_sens", B, 1, 0, None, "Rejet en zone sensible à l'eutrophisation"),
+    ("nom_zs", S, 120, 0, None, "Zone sensible de rejet"),
+    ("agglo", S, 200, 0, None, "Agglomération d'assainissement"),
+    ("commune", S, 120, 0, None, "Commune d'implantation"),
+    ("nor_classe", S, 20, 0, None,
+     "Classe réglementaire (arrêté du 21/07/2015)"),
+    ("nor_dbo5", D, 8, 1, None,
+     "Norme DBO5 — concentration max. (mg/L)"),
+    ("nor_dbo5_r", D, 6, 1, None,
+     "Norme DBO5 — rendement min. (%)"),
+    ("nor_dco", D, 8, 1, None,
+     "Norme DCO — concentration max. (mg/L)"),
+    ("nor_dco_r", D, 6, 1, None,
+     "Norme DCO — rendement min. (%)"),
+    ("nor_mes", D, 8, 1, None,
+     "Norme MES — concentration max. (mg/L)"),
+    ("nor_mes_r", D, 6, 1, None,
+     "Norme MES — rendement min. (%)"),
+    ("nor_ngl", D, 8, 1, None,
+     "Norme azote NGL — concentration max. (mg/L)"),
+    ("nor_ngl_r", D, 6, 1, None,
+     "Norme azote NGL — rendement min. (%)"),
+    ("nor_pt", D, 8, 1, None,
+     "Norme phosphore Pt — concentration max. (mg/L)"),
+    ("nor_pt_r", D, 6, 1, None,
+     "Norme phosphore Pt — rendement min. (%)"),
+    ("nor_source", S, 200, 0, None, "Origine des seuils réglementaires"),
+]
+
+# Ouvrages de prelevement d'eau, un point par ouvrage retenu (derniere annee
+# connue). Voir core.prelevements : la mesure porte sur ce qui est retire du
+# milieu, cote amont de ce que les STEU rendent en aval.
+PRELEVEMENT_FIELDS = [
+    ("id_bv", S, 40, 0, None, "Identifiant du bassin"),
+    ("code", S, 20, 0, None, "Code Hub'Eau de l'ouvrage"),
+    ("nom", S, 200, 0, None, "Nom de l'ouvrage"),
+    ("annee", INT, 6, 0, None, "Année du dernier volume connu"),
+    ("volume_m3", D, 14, 0, None, "Volume prélevé (m³/an)"),
+    ("usage", S, 120, 0, None, "Usage principal"),
+    ("commune", S, 120, 0, None, "Commune d'implantation"),
+]
+
 # Formations vegetales de la BD Foret v2, une entite par polygone decoupe sur
 # le bassin.
 FOREST_FIELDS = [
@@ -485,6 +573,7 @@ REPORT_SECTIONS = [
     ("Hydrographie", [
         "long_chem_km", "lin_hydro_km", "dens_drainage", "reseau_dedans",
         "roe_nb", "roe_h_cum_m", "roe_par_km", "sitehydro_nb",
+        "steu_nb", "steu_capa_tot_eh", "preleve_nb", "preleve_vol_m3",
     ]),
     ("Occupation du sol", [
         "ocs_dominante", "ocs_artif_pct", "ocs_agri_pct", "ocs_foret_pct",
@@ -684,7 +773,7 @@ def build_attributes(delineation_result, network_result, click_point,
                      metrics_values=None, water_body=None, basin_id=None,
                      land_cover=None, refined=None, protected=None,
                      structures=None, groundwater=None, hydroecoregion=None,
-                     agriculture=None):
+                     agriculture=None, steu=None, prelevements=None):
     """Assemble les valeurs des champs du bassin, par groupe de provenance."""
     basin_id = basin_id or datetime.now().strftime("BV_%Y%m%d_%H%M%S")
     stream = network_result.get("stream") or {}
@@ -756,6 +845,8 @@ def build_attributes(delineation_result, network_result, click_point,
         "zonages": flatten_protected(protected),
         "roe": structures.get("roe") or {},
         "hydrometrie": structures.get("hydrometrie") or {},
+        "steu": steu or {},
+        "prelevements": prelevements or {},
     }, basin_id
 
 
@@ -820,6 +911,68 @@ def obstacle_features(fields, structures, basin_id):
         feature["usage"] = site["usage"]
         feature["grenelle"] = site["grenelle"]
         feature["cours_eau"] = site["cours_d_eau"]
+        yield feature
+
+
+def steu_features(fields, steu_values, basin_id):
+    """Un point par station de traitement des eaux usees du bassin."""
+    from qgis.core import QgsPointXY
+
+    stations = (steu_values or {}).get("stations") or []
+    for station in stations:
+        if station.get("x") is None or station.get("y") is None:
+            continue
+        feature = QgsFeature(fields)
+        feature.setGeometry(
+            QgsGeometry.fromPointXY(QgsPointXY(station["x"], station["y"])))
+        feature["id_bv"] = basin_id
+        feature["code"] = station["code"]
+        feature["nom"] = station["nom"]
+        feature["capacite_eh"] = station["capacite_eh"]
+        feature["charge_eh"] = station["charge_max_eh"]
+        feature["taux_charge"] = station["taux_charge_pct"]
+        feature["nature"] = station["nature"]
+        feature["en_service"] = station["en_service"]
+        feature["date_serv"] = station["date_service"]
+        feature["autosurv"] = station["autosurveillance"]
+        feature["conformite"] = station["conformite_autosurv"]
+        feature["zone_sens"] = station["zone_sensible"]
+        feature["nom_zs"] = station["nom_zone_sensible"]
+        feature["agglo"] = station["agglomeration"]
+        feature["commune"] = station["commune"]
+        feature["nor_classe"] = station["norme_classe"]
+        feature["nor_dbo5"] = station["norme_dbo5_mg_l"]
+        feature["nor_dbo5_r"] = station["norme_dbo5_rdt_pct"]
+        feature["nor_dco"] = station["norme_dco_mg_l"]
+        feature["nor_dco_r"] = station["norme_dco_rdt_pct"]
+        feature["nor_mes"] = station["norme_mes_mg_l"]
+        feature["nor_mes_r"] = station["norme_mes_rdt_pct"]
+        feature["nor_ngl"] = station["norme_ngl_mg_l"]
+        feature["nor_ngl_r"] = station["norme_ngl_rdt_pct"]
+        feature["nor_pt"] = station["norme_pt_mg_l"]
+        feature["nor_pt_r"] = station["norme_pt_rdt_pct"]
+        feature["nor_source"] = station["norme_source"]
+        yield feature
+
+
+def prelevement_features(fields, prelevements_values, basin_id):
+    """Un point par ouvrage de prelevement d'eau du bassin."""
+    from qgis.core import QgsPointXY
+
+    ouvrages = (prelevements_values or {}).get("ouvrages") or []
+    for ouvrage in ouvrages:
+        if ouvrage.get("x") is None or ouvrage.get("y") is None:
+            continue
+        feature = QgsFeature(fields)
+        feature.setGeometry(
+            QgsGeometry.fromPointXY(QgsPointXY(ouvrage["x"], ouvrage["y"])))
+        feature["id_bv"] = basin_id
+        feature["code"] = ouvrage["code"]
+        feature["nom"] = ouvrage["nom"]
+        feature["annee"] = ouvrage["annee"]
+        feature["volume_m3"] = ouvrage["volume_m3"]
+        feature["usage"] = ouvrage["usage"]
+        feature["commune"] = ouvrage["commune"]
         yield feature
 
 
@@ -956,7 +1109,8 @@ def build_layers(result, click_point, basin_id=None):
         result["land_cover"], result.get("affinage"),
         result.get("protected"), result.get("structures"),
         result.get("groundwater"), result.get("hydroecoregion"),
-        result.get("agriculture"),
+        result.get("agriculture"), result.get("steu"),
+        result.get("prelevements"),
     )
 
     basin = _memory_layer("Polygon", "Bassin versant", BASIN_FIELDS)
@@ -973,7 +1127,8 @@ def build_layers(result, click_point, basin_id=None):
 
     layers = {"bassin": basin, "exutoire": outlets, "reseau": None,
               "zonages": None, "parcelles": None, "foret": None,
-              "bio": None, "obstacles": None}
+              "bio": None, "obstacles": None, "steu": None,
+              "prelevements": None}
 
     # Obstacles a l'ecoulement, si le ROE a ete interroge.
     roe_layer = _memory_layer("Point", "Obstacles à l'écoulement (ROE)",
@@ -984,6 +1139,26 @@ def build_layers(result, click_point, basin_id=None):
         roe_layer.dataProvider().addFeatures(ouvrages)
         roe_layer.updateExtents()
         layers["obstacles"] = roe_layer
+
+    # Stations de traitement des eaux usees, si la couche a ete interrogee.
+    steu_layer = _memory_layer("Point", "Stations de traitement (STEU)",
+                               STEU_FIELDS)
+    stations = list(steu_features(steu_layer.fields(),
+                                  result.get("steu"), basin_id))
+    if stations:
+        steu_layer.dataProvider().addFeatures(stations)
+        steu_layer.updateExtents()
+        layers["steu"] = steu_layer
+
+    # Prelevements d'eau, si le service a ete interroge.
+    preleve_layer = _memory_layer("Point", "Prélèvements d'eau",
+                                  PRELEVEMENT_FIELDS)
+    ouvrages_preleve = list(prelevement_features(
+        preleve_layer.fields(), result.get("prelevements"), basin_id))
+    if ouvrages_preleve:
+        preleve_layer.dataProvider().addFeatures(ouvrages_preleve)
+        preleve_layer.updateExtents()
+        layers["prelevements"] = preleve_layer
 
     # Parcelles engagees en bio, si la couche categorisee a ete interrogee.
     bio_layer = _memory_layer("MultiPolygon",
@@ -1073,6 +1248,12 @@ def style_layers(layers):
 
     if layers.get("obstacles") is not None:
         _style_obstacles(layers["obstacles"])
+
+    if layers.get("steu") is not None:
+        _style_steu(layers["steu"])
+
+    if layers.get("prelevements") is not None:
+        _style_prelevements(layers["prelevements"])
 
     # Les quatre etats de l'exutoire se distinguent au premier coup d'oeil :
     # c'est ce qui permet de voir d'un regard de combien le point a bouge.
@@ -1234,8 +1415,32 @@ OBSTACLE_STYLES = (
 # plus haute rencontree. Une taille fixe ne dirait rien : sur la Besbre, un
 # seuil de quarante centimetres et un barrage de quarante metres se
 # ressembleraient trait pour trait.
-OBSTACLE_SIZE_MIN = 1.8
-OBSTACLE_SIZE_MAX = 6.0
+OBSTACLE_SIZE_MIN = 1.5
+OBSTACLE_SIZE_MAX = 4.5
+
+# Classes de capacite des stations, et taille du carre en millimetres.
+#
+# Trois paliers plutot qu'une taille continue : les bornes ne sont pas
+# choisies pour l'oeil mais reprises de la reglementation, ce qui fait qu'une
+# station change de symbole exactement quand elle change d'obligations. A
+# 2 000 EH s'appliquent les seuils de rejet renforces de la directive ERU ;
+# au-dela de 10 000 EH s'ajoutent l'azote et le phosphore en zone sensible.
+# La legende dit donc quelque chose du regime de l'ouvrage, pas seulement de
+# sa taille.
+#
+# (borne haute exclue ou None, taille, libelle de legende)
+STEU_CLASSES = (
+    (2000, 2.0, "< 2 000 EH"),
+    (10000, 3.4, "2 000 à 9 999 EH"),
+    (None, 5.0, "≥ 10 000 EH"),
+)
+
+# Stations dont le referentiel ne donne pas la capacite. Elles gardent le plus
+# petit carre et le disent : leur rejet existe, il n'est pas chiffre.
+STEU_UNKNOWN_SIZE = 1.4
+STEU_UNKNOWN_LABEL = "Capacité non renseignée"
+
+STEU_COLOR = "#7d3c98"
 
 
 def _style_obstacles(layer):
@@ -1274,6 +1479,106 @@ def _style_obstacles(layer):
         categories.append(QgsRendererCategory(valeur, symbol, libelle))
     if categories:
         layer.setRenderer(QgsCategorizedSymbolRenderer("passe", categories))
+
+
+def _style_steu(layer):
+    """Points des stations : une seule couleur, trois tailles par classe.
+
+    La categorisation porte sur une expression et non sur un champ. Un rendu
+    gradue aurait ete le reflexe, mais ses bornes sont inclusives du cote
+    haut : une station de 2 000 EH pile serait tombee dans la classe des
+    moins de 2 000, c'est-a-dire du mauvais cote du seuil qui lui impose
+    justement ses obligations. L'expression pose la borne ou elle doit etre.
+
+    Pas de categorisation par conformite, volontairement. Le referentiel ne
+    renseigne l'autosurveillance que sur une minorite des petites stations,
+    et colorer le reste en "non valide" ferait lire une carte de mauvais
+    eleves la ou il n'y a qu'une donnee manquante. La conformite reste en
+    attribut, ou elle se lit avec son libelle complet.
+    """
+    from qgis.core import (
+        QgsCategorizedSymbolRenderer, QgsMarkerSymbol, QgsRendererCategory,
+    )
+
+    classement = ["CASE WHEN \"capacite_eh\" IS NULL "
+                  "OR \"capacite_eh\" <= 0 THEN '{0}'".format(
+                      STEU_UNKNOWN_LABEL)]
+    for borne, _taille, libelle in STEU_CLASSES:
+        if borne is None:
+            classement.append("ELSE '{0}' END".format(libelle))
+        else:
+            classement.append(
+                "WHEN \"capacite_eh\" < {0} THEN '{1}'".format(borne, libelle)
+            )
+    expression = " ".join(classement)
+
+    def _symbole(taille):
+        return QgsMarkerSymbol.createSimple({
+            "name": "square", "color": STEU_COLOR,
+            "outline_color": "white", "outline_width": "0.3",
+            "size": str(taille),
+        })
+
+    # Une classe vide ne figure pas dans la legende : sur un bassin rural,
+    # afficher "≥ 10 000 EH" quand aucune station ne l'atteint ferait chercher
+    # sur la carte un symbole qui n'y est pas.
+    capacites = [f["capacite_eh"] for f in layer.getFeatures()]
+    presentes = set()
+    for capacite in capacites:
+        if not capacite or capacite <= 0:
+            presentes.add(STEU_UNKNOWN_LABEL)
+            continue
+        for borne, _taille, libelle in STEU_CLASSES:
+            if borne is None or capacite < borne:
+                presentes.add(libelle)
+                break
+
+    categories = []
+    for libelle, taille in (
+        [(STEU_UNKNOWN_LABEL, STEU_UNKNOWN_SIZE)]
+        + [(lib, taille) for _b, taille, lib in STEU_CLASSES]
+    ):
+        if libelle in presentes:
+            categories.append(
+                QgsRendererCategory(libelle, _symbole(taille), libelle))
+    if categories:
+        layer.setRenderer(
+            QgsCategorizedSymbolRenderer(expression, categories))
+    layer.setOpacity(0.9)
+
+
+PRELEVEMENT_SIZE_MIN = 1.5
+PRELEVEMENT_SIZE_MAX = 4.5
+PRELEVEMENT_COLOR = "#1a5276"
+
+
+def _style_prelevements(layer):
+    """Points des prelevements : une couleur, taille continue par volume.
+
+    Comme la chute des obstacles, le volume est une grandeur continue : le
+    decouper en classes ferait croire a des paliers reglementaires qui
+    n'existent pas ici.
+    """
+    from qgis.core import (
+        QgsMarkerSymbol, QgsProperty, QgsSingleSymbolRenderer, QgsSymbolLayer,
+    )
+
+    volumes = [f["volume_m3"] for f in layer.getFeatures() if f["volume_m3"]]
+    maximum = max(volumes) if volumes else 1.0
+    taille = (
+        "coalesce(scale_linear(\"volume_m3\", 0, {0}, {1}, {2}), {1})"
+    ).format(max(maximum, 0.1), PRELEVEMENT_SIZE_MIN, PRELEVEMENT_SIZE_MAX)
+
+    symbol = QgsMarkerSymbol.createSimple({
+        "name": "circle", "color": PRELEVEMENT_COLOR,
+        "outline_color": "white", "outline_width": "0.3",
+        "size": str(PRELEVEMENT_SIZE_MIN),
+    })
+    symbol.setDataDefinedSize(QgsProperty.fromExpression(taille))
+    symbol.symbolLayer(0).setDataDefinedProperty(
+        QgsSymbolLayer.Property.PropertySize,
+        QgsProperty.fromExpression(taille))
+    layer.setRenderer(QgsSingleSymbolRenderer(symbol))
 
 
 def _style_bio(layer):
@@ -1484,7 +1789,7 @@ def _label_streams(layer):
 # aucune couche a montrer n'est pas cree.
 LAYER_GROUPS = (
     (None, ("exutoire",)),
-    ("Hydrographie", ("obstacles", "reseau")),
+    ("Hydrographie", ("steu", "prelevements", "obstacles", "reseau")),
     ("Zonages environnementaux", ("zonages",)),
     ("Agriculture", ("bio", "parcelles")),
     ("Occupation du sol", ("foret",)),

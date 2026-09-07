@@ -71,10 +71,77 @@ def _outline(geometry):
     return [(point.x(), point.y()) for point in polygon[0]]
 
 
+def _stream_orders(records):
+    """Ordre de Strahler de chaque troncon, dans l'ordre de records.
+
+    Calcule sans recursion (une riviere de plusieurs milliers de troncons
+    depasserait vite la profondeur d'appel par defaut de Python) : les
+    troncons sans affluent partent a l'ordre 1, puis chaque confluence
+    reprend le plus grand ordre de ses affluents - et le majore d'un cran
+    si plusieurs affluents partagent ce plus grand ordre, regle habituelle
+    de Strahler.
+
+    C'est cet ordre qui donne ensuite son epaisseur au trait dans le
+    bloc-diagramme : le collecteur principal s'y distingue d'un affluent de
+    tete de bassin, ce qu'une epaisseur unique ne permettait pas.
+    """
+    records = list(records or [])
+    n = len(records)
+    if n == 0:
+        return []
+
+    # Troncons qui se jettent dans chaque noeud (leur extremite aval y est).
+    ending_at = {}
+    for index, record in enumerate(records):
+        node = record.get("downstream_node")
+        if node is not None:
+            ending_at.setdefault(node, []).append(index)
+
+    # Troncons qui partent de chaque noeud (leur extremite amont y est) :
+    # c'est par la qu'on redescend vers les troncons en aval.
+    starting_at = {}
+    for index, record in enumerate(records):
+        node = record.get("upstream_node")
+        if node is not None:
+            starting_at.setdefault(node, []).append(index)
+
+    contributors = [
+        [j for j in ending_at.get(records[i].get("upstream_node"), []) if j != i]
+        for i in range(n)
+    ]
+    remaining = [len(c) for c in contributors]
+
+    orders = [None] * n
+    queue = [i for i in range(n) if remaining[i] == 0]
+    while queue:
+        i = queue.pop()
+        child_orders = [orders[j] for j in contributors[i]]
+        if not child_orders:
+            orders[i] = 1
+        else:
+            top = max(child_orders)
+            orders[i] = top + 1 if child_orders.count(top) > 1 else top
+        for j in starting_at.get(records[i].get("downstream_node"), []):
+            remaining[j] -= 1
+            if remaining[j] == 0:
+                queue.append(j)
+
+    # Une boucle dans le graphe (donnee source imparfaite) laisserait des
+    # troncons non resolus : ils prennent l'ordre 1 plutot que de manquer.
+    return [order if order is not None else 1 for order in orders]
+
+
 def _polylines(records, step=STREAM_STEP):
-    """Troncons echantillonnes, en listes de couples."""
+    """Troncons echantillonnes, en listes de couples, avec leur ordre.
+
+    Renvoie (lignes, ordres) : deux listes parallèles, l'ordre de Strahler
+    de chaque ligne servant a moduler son epaisseur au dessin.
+    """
+    records = list(records or [])
+    orders = _stream_orders(records)
     lines = []
-    for record in records or []:
+    line_orders = []
+    for record, order in zip(records, orders):
         geometry = record["geometry"]
         length = geometry.length()
         if length <= 0:
@@ -89,7 +156,8 @@ def _polylines(records, step=STREAM_STEP):
             line.append((vertex.x(), vertex.y()))
         if len(line) > 1:
             lines.append(line)
-    return lines
+            line_orders.append(order)
+    return lines, line_orders
 
 
 def extract(dem_info, geometry, upstream=None, outlet=None,
@@ -99,10 +167,11 @@ def extract(dem_info, geometry, upstream=None, outlet=None,
     Renvoie un dictionnaire :
         grid       altitudes (lignes du nord au sud), avec des NaN aux trous
         x, y       coordonnees des centres de maille, en Lambert 93
-        contour    ligne de partage des eaux, liste de couples
-        reseau     troncons amont echantillonnes, listes de couples
-        exutoire   couple, ou None
-        maille_m   cote de maille de la grille conservee
+        contour      ligne de partage des eaux, liste de couples
+        reseau       troncons amont echantillonnes, listes de couples
+        reseau_ordre ordre de Strahler de chaque troncon de reseau
+        exutoire     couple, ou None
+        maille_m     cote de maille de la grille conservee
     """
     box = geometry.boundingBox()
     margin = MARGIN_SHARE * max(box.width(), box.height())
@@ -137,12 +206,14 @@ def extract(dem_info, geometry, upstream=None, outlet=None,
     x = xmin + (np.arange(buffer_width) + 0.5) * step_x
     y = ymax - (np.arange(buffer_height) + 0.5) * step_y
 
+    reseau, reseau_ordre = _polylines(upstream)
     return {
         "grid": grid,
         "x": x,
         "y": y,
         "contour": _outline(geometry),
-        "reseau": _polylines(upstream),
+        "reseau": reseau,
+        "reseau_ordre": reseau_ordre,
         "exutoire": tuple(outlet) if outlet else None,
         "maille_m": max(step_x, step_y),
     }

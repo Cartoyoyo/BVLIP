@@ -62,6 +62,9 @@ DATASETS = (
     ("her", "eau", True),
     ("roe", "eau", True),
     ("hydrometrie", "eau", True),
+    ("steu", "eau", True),
+    ("population", "eau", True),
+    ("prelevements", "eau", True),
 )
 
 KEYS = tuple(key for key, _tab, _on in DATASETS)

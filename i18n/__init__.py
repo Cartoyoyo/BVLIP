@@ -458,6 +458,27 @@ TR = {
         "pt": "Obstáculos ao escoamento (ROE)",
         "de": "Querbauwerke (ROE)",
     },
+    "ds_steu": {
+        "fr": "Stations de traitement (STEU)",
+        "en": "Wastewater treatment plants",
+        "es": "Estaciones depuradoras",
+        "pt": "Estações de tratamento",
+        "de": "Kläranlagen",
+    },
+    "ds_population": {
+        "fr": "Population estimée",
+        "en": "Estimated population",
+        "es": "Población estimada",
+        "pt": "População estimada",
+        "de": "Geschätzte Bevölkerung",
+    },
+    "ds_prelevements": {
+        "fr": "Prélèvements d'eau",
+        "en": "Water withdrawals",
+        "es": "Extracciones de agua",
+        "pt": "Captações de água",
+        "de": "Wasserentnahmen",
+    },
     "ds_hydrometrie": {
         "fr": "Sites hydrométriques",
         "en": "Gauging sites",
@@ -882,6 +903,123 @@ TR = {
               "WRRL. Zwei Gebiete aus verschiedenen Hydroökoregionen sind "
               "nicht vergleichbar. Nahezu kostenlos.",
     },
+    "dsinfo_steu": {
+        "fr": "Stations de traitement des eaux usées implantées dans le "
+              "bassin (Sandre) : capacité nominale en équivalent-habitants, "
+              "charge entrante et taux de charge, autosurveillance et sa "
+              "conformité, zone sensible de rejet. La taille du point suit "
+              "la capacité. Les normes de rejet ne sont pas rapatriées — "
+              "aucune base ouverte ne les donne station par station — mais "
+              "calculées d'après l'arrêté du 21 juillet 2015 à partir de la "
+              "capacité et de la zone sensible : ce sont les seuils "
+              "réglementaires applicables, que l'arrêté préfectoral de "
+              "l'ouvrage peut resserrer.",
+        "en": "Wastewater treatment plants located in the basin (Sandre): "
+              "nominal capacity in population equivalent, incoming load and "
+              "load rate, self-monitoring and its compliance, sensitive "
+              "discharge zone. Point size follows capacity. Discharge "
+              "standards are not downloaded — no open database gives them "
+              "plant by plant — but computed from the decree of 21 July 2015 "
+              "using capacity and sensitive zone: these are the applicable "
+              "regulatory thresholds, which the plant's prefectoral order "
+              "may tighten.",
+        "es": "Estaciones depuradoras situadas en la cuenca (Sandre): "
+              "capacidad nominal en habitantes equivalentes, carga entrante "
+              "y tasa de carga, autocontrol y su conformidad, zona sensible "
+              "de vertido. El tamaño del punto sigue la capacidad. Los "
+              "límites de vertido no se descargan — ninguna base abierta los "
+              "da por estación — sino que se calculan según el decreto del "
+              "21 de julio de 2015: son los umbrales reglamentarios "
+              "aplicables, que la autorización prefectoral puede endurecer.",
+        "pt": "Estações de tratamento de águas residuais na bacia (Sandre): "
+              "capacidade nominal em equivalente-habitante, carga afluente e "
+              "taxa de carga, autocontrolo e a sua conformidade, zona "
+              "sensível de descarga. O tamanho do ponto segue a capacidade. "
+              "Os limites de descarga não são descarregados — nenhuma base "
+              "aberta os fornece por estação — mas calculados a partir do "
+              "decreto de 21 de julho de 2015: são os limiares "
+              "regulamentares aplicáveis, que a autorização pode restringir.",
+        "de": "Kläranlagen im Einzugsgebiet (Sandre): Nennkapazität in "
+              "Einwohnerwerten, Zulauffracht und Auslastung, Eigenkontrolle "
+              "und deren Konformität, empfindliches Einleitgebiet. Die "
+              "Punktgröße folgt der Kapazität. Die Einleitgrenzwerte werden "
+              "nicht heruntergeladen — keine offene Datenbank liefert sie "
+              "je Anlage — sondern nach dem Erlass vom 21. Juli 2015 aus "
+              "Kapazität und empfindlichem Gebiet berechnet: es sind die "
+              "geltenden Mindestanforderungen, die der behördliche "
+              "Bescheid verschärfen kann.",
+    },
+    "dsinfo_population": {
+        "fr": "Estimation de la population du bassin, par commune ADMIN "
+              "EXPRESS (IGN) recoupant le bassin : les logements du bâti BD "
+              "TOPO dans la part du bassin qui touche la commune, rapportés "
+              "aux logements de la commune entière, appliqués à sa "
+              "population officielle. N'est pas un recensement — une "
+              "estimation qui suppose la densité de logements comparable "
+              "dans et hors bassin.",
+        "en": "Population estimate for the basin, commune by commune from "
+              "ADMIN EXPRESS (IGN) intersecting it: BD TOPO building "
+              "dwellings in the part of the basin touching the commune, "
+              "against the whole commune's dwellings, applied to its "
+              "official population. Not a census — an estimate assuming "
+              "comparable dwelling density inside and outside the basin.",
+        "es": "Estimación de la población de la cuenca, municipio por "
+              "municipio ADMIN EXPRESS (IGN) que la corta: las viviendas del "
+              "catastro BD TOPO en la parte de la cuenca que toca el "
+              "municipio, frente a las viviendas de todo el municipio, "
+              "aplicadas a su población oficial. No es un censo — una "
+              "estimación que supone una densidad de viviendas comparable "
+              "dentro y fuera de la cuenca.",
+        "pt": "Estimativa da população da bacia, por município ADMIN "
+              "EXPRESS (IGN) que a intersecta: as habitações do edificado "
+              "BD TOPO na parte da bacia que toca o município, face às "
+              "habitações de todo o município, aplicadas à sua população "
+              "oficial. Não é um recenseamento — uma estimativa que "
+              "pressupõe densidade de habitações comparável dentro e fora "
+              "da bacia.",
+        "de": "Bevölkerungsschätzung des Einzugsgebiets, Gemeinde für "
+              "Gemeinde aus ADMIN EXPRESS (IGN), die es schneiden: die "
+              "BD-TOPO-Gebäudewohnungen im Teil des Einzugsgebiets, der die "
+              "Gemeinde berührt, im Verhältnis zu den Wohnungen der ganzen "
+              "Gemeinde, angewandt auf deren offizielle Bevölkerung. Keine "
+              "Volkszählung — eine Schätzung, die eine vergleichbare "
+              "Wohnungsdichte innerhalb und außerhalb des Einzugsgebiets "
+              "voraussetzt.",
+    },
+    "dsinfo_prelevements": {
+        "fr": "Ouvrages de prélèvement d'eau recensés dans les communes "
+              "recoupant le bassin (Hub'Eau / BNPE), retenus quand leur point "
+              "tombe réellement dans le bassin : volume annuel prélevé pour "
+              "le dernier exercice connu, par usage — eau potable, "
+              "irrigation, industrie, énergie. Mesure la pression en amont, "
+              "là où les STEU mesurent ce qui est rendu en aval.",
+        "en": "Water withdrawal facilities recorded in communes intersecting "
+              "the basin (Hub'Eau / BNPE), kept when their point actually "
+              "falls inside the basin: annual volume withdrawn for the "
+              "latest known year, by usage — drinking water, irrigation, "
+              "industry, energy. Measures upstream pressure, where "
+              "wastewater plants measure what is returned downstream.",
+        "es": "Instalaciones de extracción de agua registradas en los "
+              "municipios que cortan la cuenca (Hub'Eau / BNPE), retenidas "
+              "cuando su punto cae realmente dentro de la cuenca: volumen "
+              "anual extraído en el último ejercicio conocido, por uso — "
+              "agua potable, riego, industria, energía. Mide la presión "
+              "aguas arriba, donde las depuradoras miden lo devuelto aguas "
+              "abajo.",
+        "pt": "Captações de água registadas nos municípios que intersectam "
+              "a bacia (Hub'Eau / BNPE), mantidas quando o seu ponto cai "
+              "realmente dentro da bacia: volume anual captado no último "
+              "ano conhecido, por uso — água potável, rega, indústria, "
+              "energia. Mede a pressão a montante, onde as ETAR medem o que "
+              "é devolvido a jusante.",
+        "de": "In den das Einzugsgebiet schneidenden Gemeinden erfasste "
+              "Wasserentnahmestellen (Hub'Eau / BNPE), berücksichtigt, wenn "
+              "ihr Punkt tatsächlich im Einzugsgebiet liegt: jährlich "
+              "entnommenes Volumen für das letzte bekannte Jahr, nach "
+              "Nutzung — Trinkwasser, Bewässerung, Industrie, Energie. Misst "
+              "den Druck stromaufwärts, während Kläranlagen messen, was "
+              "stromabwärts zurückgegeben wird.",
+    },
     "dsinfo_roe": {
         "fr": "Référentiel des obstacles à l'écoulement : barrages, seuils, "
               "digues recensés dans le bassin, avec leur nombre, ceux encore "
@@ -989,6 +1127,195 @@ TR = {
         "es": "Desde arriba",
         "pt": "De cima",
         "de": "Von oben",
+    },
+    "view3d_se": {
+        "fr": "Vue du sud-est",
+        "en": "From the south-east",
+        "es": "Desde el sureste",
+        "pt": "De sudeste",
+        "de": "Von Südosten",
+    },
+    "view3d_ne": {
+        "fr": "Vue du nord-est",
+        "en": "From the north-east",
+        "es": "Desde el noreste",
+        "pt": "De nordeste",
+        "de": "Von Nordosten",
+    },
+    "view3d_nw": {
+        "fr": "Vue du nord-ouest",
+        "en": "From the north-west",
+        "es": "Desde el noroeste",
+        "pt": "De noroeste",
+        "de": "Von Nordwesten",
+    },
+    "view3d_exaggeration": {
+        "fr": "Exagération verticale",
+        "en": "Vertical exaggeration",
+        "es": "Exageración vertical",
+        "pt": "Exagero vertical",
+        "de": "Überhöhung",
+    },
+    "view3d_export": {
+        "fr": "Exporter l'image…",
+        "en": "Export image…",
+        "es": "Exportar imagen…",
+        "pt": "Exportar imagem…",
+        "de": "Bild exportieren…",
+    },
+    "view3d_export_mesh": {
+        "fr": "Exporter le maillage (.glb)…",
+        "en": "Export mesh (.glb)…",
+        "es": "Exportar malla (.glb)…",
+        "pt": "Exportar malha (.glb)…",
+        "de": "Netz exportieren (.glb)…",
+    },
+    "view3d_view_group": {
+        "fr": "Vue",
+        "en": "View",
+        "es": "Vista",
+        "pt": "Vista",
+        "de": "Ansicht",
+    },
+    "view3d_export_group": {
+        "fr": "Export",
+        "en": "Export",
+        "es": "Exportar",
+        "pt": "Exportar",
+        "de": "Export",
+    },
+    "view3d_nw_short": {
+        "fr": "NO", "en": "NW", "es": "NO", "pt": "NO", "de": "NW",
+    },
+    "view3d_ne_short": {
+        "fr": "NE", "en": "NE", "es": "NE", "pt": "NE", "de": "NO",
+    },
+    "view3d_sw_short": {
+        "fr": "SO", "en": "SW", "es": "SO", "pt": "SO", "de": "SW",
+    },
+    "view3d_se_short": {
+        "fr": "SE", "en": "SE", "es": "SE", "pt": "SE", "de": "SO",
+    },
+    "view3d_top_short": {
+        "fr": "Dessus",
+        "en": "Top",
+        "es": "Arriba",
+        "pt": "Cima",
+        "de": "Oben",
+    },
+    "view3d_legend_title": {
+        "fr": "Légende",
+        "en": "Legend",
+        "es": "Leyenda",
+        "pt": "Legenda",
+        "de": "Legende",
+    },
+    "view3d_definition": {
+        "fr": "Définition",
+        "en": "Definition",
+        "es": "Definición",
+        "pt": "Definição",
+        "de": "Auflösung",
+    },
+    "view3d_zoom_in": {
+        "fr": "Zoom +", "en": "Zoom +", "es": "Zoom +", "pt": "Zoom +",
+        "de": "Zoom +",
+    },
+    "view3d_zoom_out": {
+        "fr": "Zoom −", "en": "Zoom −", "es": "Zoom −", "pt": "Zoom −",
+        "de": "Zoom −",
+    },
+    "view3d_habillage": {
+        "fr": "Habillage",
+        "en": "Draping",
+        "es": "Vestimenta",
+        "pt": "Revestimento",
+        "de": "Textur",
+    },
+    "view3d_habillage_reseau": {
+        "fr": "Cours d'eau",
+        "en": "Streams",
+        "es": "Cursos de agua",
+        "pt": "Cursos de água",
+        "de": "Wasserläufe",
+    },
+    "view3d_habillage_agriculture": {
+        "fr": "Agriculture (PAC)",
+        "en": "Farming (CAP)",
+        "es": "Agricultura (PAC)",
+        "pt": "Agricultura (PAC)",
+        "de": "Landwirtschaft (GAP)",
+    },
+    "view3d_habillage_foret": {
+        "fr": "BD Forêt",
+        "en": "BD Forêt (forest cover)",
+        "es": "BD Forêt (cubierta forestal)",
+        "pt": "BD Forêt (cobertura florestal)",
+        "de": "BD Forêt (Waldbedeckung)",
+    },
+    "view3d_habillage_relief_gris": {
+        "fr": "Relief (niveaux de gris)",
+        "en": "Relief (greyscale)",
+        "es": "Relieve (escala de grises)",
+        "pt": "Relevo (tons de cinzento)",
+        "de": "Relief (Graustufen)",
+    },
+    "view3d_move_up": {
+        "fr": "Monter", "en": "Up", "es": "Subir", "pt": "Subir",
+        "de": "Hoch",
+    },
+    "view3d_move_down": {
+        "fr": "Descendre", "en": "Down", "es": "Bajar", "pt": "Descer",
+        "de": "Runter",
+    },
+    "view3d_move_up_tip": {
+        "fr": "Remonter l'habillage dans la pile (il recouvre les autres).",
+        "en": "Move the draping up the stack (it covers the others).",
+        "es": "Subir la capa en la pila (cubre a las demás).",
+        "pt": "Subir a camada na pilha (cobre as outras).",
+        "de": "Textur im Stapel nach oben (überdeckt die anderen).",
+    },
+    "view3d_move_down_tip": {
+        "fr": "Descendre l'habillage dans la pile (les autres le recouvrent).",
+        "en": "Move the draping down the stack (the others cover it).",
+        "es": "Bajar la capa en la pila (las demás la cubren).",
+        "pt": "Descer a camada na pilha (as outras cobrem-na).",
+        "de": "Textur im Stapel nach unten (die anderen überdecken sie).",
+    },
+    "view3d_opacity": {
+        "fr": "Opacité",
+        "en": "Opacity",
+        "es": "Opacidad",
+        "pt": "Opacidade",
+        "de": "Deckkraft",
+    },
+    "view3d_habillage_corine": {
+        "fr": "Occupation du sol (Corine)",
+        "en": "Land cover (Corine)",
+        "es": "Uso del suelo (Corine)",
+        "pt": "Uso do solo (Corine)",
+        "de": "Bodenbedeckung (Corine)",
+    },
+    "view3d_habillage_loading": {
+        "fr": "Chargement de l'habillage…",
+        "en": "Loading draping…",
+        "es": "Cargando la vestimenta…",
+        "pt": "A carregar o revestimento…",
+        "de": "Textur wird geladen…",
+    },
+    "view3d_habillage_error": {
+        "fr": "Habillage indisponible : {error}",
+        "en": "Draping unavailable: {error}",
+        "es": "Vestimenta no disponible: {error}",
+        "pt": "Revestimento indisponível: {error}",
+        "de": "Textur nicht verfügbar: {error}",
+    },
+    "view3d_export_done": {
+        "fr": "Enregistré : {path}",
+        "en": "Saved: {path}",
+        "es": "Guardado: {path}",
+        "pt": "Guardado: {path}",
+        "de": "Gespeichert: {path}",
     },
     "view3d_missing": {
         "fr": "Relief indisponible : matplotlib est absent, ou le calcul n'a "

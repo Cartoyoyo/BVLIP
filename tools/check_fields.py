@@ -227,6 +227,50 @@ def check_detailed_sections():
             for t in manquants], len(detaillees)
 
 
+def read_rows(module, name):
+    """Table de tuples de constantes declaree en tete d'un module."""
+    path = os.path.join(PLUGIN_DIR, *module.split("/"))
+    with open(path, encoding="utf-8") as handle:
+        tree = ast.parse(handle.read())
+    for node in tree.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        target = node.targets[0]
+        if isinstance(target, ast.Name) and target.id == name:
+            return [
+                tuple(item.value if isinstance(item, ast.Constant) else None
+                     for item in element.elts)
+                for element in node.value.elts
+            ]
+    return []
+
+
+def check_sources():
+    """La table des sources doit dire la meme chose dans le PDF et le classeur.
+
+    Elle vit en double parce que excel doit rester importable sans QGIS, ce
+    qui interdit d'importer layout pour la lui emprunter. Rien d'autre ne
+    relie les deux copies : l'une mise a jour sans l'autre se verrait sur un
+    document mais pas sur le second, et personne ne le remarquerait avant
+    qu'un lecteur compare les deux.
+    """
+    pdf = read_rows("report/layout.py", "SOURCES")
+    classeur = read_rows("report/excel.py", "SOURCES")
+    if pdf == classeur:
+        return [], len(pdf)
+    problems = []
+    if len(pdf) != len(classeur):
+        problems.append(
+            "  {0} ligne(s) dans layout.SOURCES, {1} dans excel.SOURCES"
+            .format(len(pdf), len(classeur)))
+    for index, (a, b) in enumerate(zip(pdf, classeur)):
+        if a != b:
+            problems.append(
+                "  ligne {0} : {1!r} (PDF) != {2!r} (classeur)"
+                .format(index, a, b))
+    return problems, max(len(pdf), len(classeur))
+
+
 def main():
     tables = read_tables()
     if not tables:
@@ -265,6 +309,15 @@ def main():
         print("\n".join(problems))
     else:
         print("Zonages : {0} cles, catalogue et protected d'accord."
+              .format(total))
+
+    problems, total = check_sources()
+    if problems:
+        failed = True
+        print("Sources : {0} probleme(s)".format(len(problems)))
+        print("\n".join(problems))
+    else:
+        print("Sources : {0} ligne(s), PDF et classeur d'accord."
               .format(total))
     return 1 if failed else 0
 

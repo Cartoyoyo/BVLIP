@@ -123,6 +123,9 @@ def prepared_layout(result, layers, progress=None):
                 "agriculture": result.get("agriculture"),
                 "protected": result.get("protected"),
                 "structures": result.get("structures"),
+                "steu": result.get("steu"),
+                "population": result.get("population"),
+                "prelevements": result.get("prelevements"),
                 "water_body": result.get("water_body"),
                 "groundwater": result.get("groundwater"),
                 "hydroecoregion": result.get("hydroecoregion"),
@@ -162,5 +165,8 @@ def build_report(result, layers, pdf_path, with_workbook=True, progress=None):
                 _title_of(values), _subtitle_of(values),
                 protected=result.get("protected"),
                 structures=result.get("structures"),
+                steu=result.get("steu"),
+                population=result.get("population"),
+                prelevements=result.get("prelevements"),
             )
         return produced
