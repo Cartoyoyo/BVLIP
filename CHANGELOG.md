@@ -3,6 +3,34 @@
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le
 plugin la [gestion sémantique de version](https://semver.org/lang/fr/).
 
+## [1.2.0] - 2026-09-08
+
+### Ajouté
+
+- **Bouton « Fond de carte » (OpenTopoMap)** à côté du pointage de
+  l'exutoire, pour repérer le point sur le relief avant de cliquer. Le CRS
+  du projet est préservé s'il en avait déjà un ; sinon Lambert 93 devient le
+  défaut, pour que le cadrage sur le bassin en fin de calcul reste correct
+  quelle que soit la projection dans laquelle s'affiche le fond de plan.
+
+- **Population estimée** ajoutée en page 1 du rapport, à côté du bâti : elle
+  n'était jusque-là visible que sur la page de détail des STEU.
+
+### Retiré
+
+- **Zones vulnérable aux nitrates et sensible à l'eutrophisation**, retirées
+  du catalogue de zonages environnementaux. Le service Sandre qui les
+  servait s'est révélé trop instable — jusqu'à une minute d'attente sur un
+  simple filtre d'emprise, sans rapport avec la requête ni la couche
+  interrogée, contre une seconde pour les dix autres zonages réunis.
+
+### Modifié
+
+- **Les dix zonages environnementaux restants, tous servis par la
+  Géoplateforme, sont désormais interrogés en parallèle** plutôt qu'un par
+  un : l'étape « Zonages environnementaux » passe de près d'une minute à
+  quelques secondes sur un calcul typique.
+
 ## [1.1.1] - 2026-09-07
 
 ### Corrigé
