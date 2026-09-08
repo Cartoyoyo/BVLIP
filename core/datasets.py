@@ -54,8 +54,6 @@ DATASETS = (
     ("pnr", "zonages", True),
     ("ramsar", "zonages", True),
     ("zhumide", "zonages", True),
-    ("nitrate", "zonages", True),
-    ("eutroph", "zonages", True),
 
     ("masse_eau", "eau", True),
     ("meso", "eau", True),

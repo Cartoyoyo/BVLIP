@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Zonages environnementaux recoupant le bassin versant.
 
-Douze couches nationales, de trois natures qu'il ne faut pas confondre :
+Dix couches nationales, de deux natures qu'il ne faut pas confondre :
 
   inventaire     ZNIEFF de type I et II. Elles ne protegent rien - ce sont
                  des inventaires scientifiques - mais elles signalent ce
@@ -10,31 +10,38 @@ Douze couches nationales, de trois natures qu'il ne faut pas confondre :
                  oiseaux), arretes de protection de biotope, reserves
                  naturelles nationales et regionales, sites Ramsar. Celles-la
                  opposent un regime juridique.
-  pression       zones vulnerables aux nitrates et zones sensibles a
-                 l'eutrophisation. Elles ne disent pas ce qu'il y a de
-                 remarquable dans le bassin, mais ce qu'on lui fait subir.
 
 Les surfaces ne s'additionnent pas. Une ZNIEFF de type I est presque toujours
 incluse dans une ZNIEFF de type II, une ZSC et une ZPS se superposent sur les
-memes vallees : sommer les douze lignes annoncerait couramment plus de 100 %
+memes vallees : sommer les dix lignes annoncerait couramment plus de 100 %
 d'un bassin. Le total est donc une union geometrique, calculee comme telle, et
 c'est la seule valeur du tableau qui puisse se comparer a la surface du bassin.
 
-Les sources sont deux services distincts : la Geoplateforme sert les zonages
-de l'INPN sous forme de GeoJSON pagine, le Sandre les deux zonages de la
-directive nitrates et de la directive eaux residuaires urbaines en WFS 1.1.
-Le detail est dans geoservices et dans sandre ; ici on ne voit qu'une couche
-a lire et une surface a cumuler.
+Toutes servies par la Geoplateforme, en GeoJSON pagine - voir geoservices. Le
+catalogue portait a l'origine deux zonages de pression, servis par le Sandre
+en WFS 1.1 : la zone vulnerable aux nitrates et la zone sensible a
+l'eutrophisation. Les deux ont ete retirees, non pour ce qu'elles disaient
+mais pour la fiabilite du service qui les servait - repondant tantot en une
+seconde, tantot en plusieurs dizaines, sans rapport avec la requete ni le
+filtre d'emprise applique. La lenteur de l'eutrophisation avait d'abord ete
+absorbee en la parallelisant avec le reste plutot qu'en la retirant ; la
+meme instabilite s'est ensuite revelee sur les nitrates, ce qui a tranche la
+question pour les deux : mieux vaut un catalogue plus court et fiable qu'un
+zonage de plus dont on ne sait jamais s'il coutera une seconde ou une minute.
+
+Les dix couches restantes sont interrogees en parallele - voir compute() -
+plutot qu'une a une : chacune attend son propre aller-retour reseau, sans
+dependre des autres.
 """
 
 import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from qgis.core import QgsGeometry, QgsJsonUtils
 
-from . import sandre
 from .geoservices import GeoserviceError, wfs_pages
 
-# (cle, source, couche, libelle, nature, couleur)
+# (cle, couche, libelle, nature, couleur)
 #
 # L'ordre est celui du rapport : les inventaires d'abord parce qu'ils sont les
 # plus etendus, les protections ensuite, les pressions en dernier.
@@ -53,38 +60,34 @@ from .geoservices import GeoserviceError, wfs_pages
 # que des tons rompus laissent voir et le fond, et le chevelu, et les
 # recouvrements.
 ZONAGES = (
-    ("znieff1", "geopf", "patrinat_znieff1:znieff1",
+    ("znieff1", "patrinat_znieff1:znieff1",
      "ZNIEFF de type I", "inventaire", "#4f9d69"),
-    ("znieff2", "geopf", "patrinat_znieff2:znieff2",
+    ("znieff2", "patrinat_znieff2:znieff2",
      "ZNIEFF de type II", "inventaire", "#a3c4a8"),
-    ("zsc", "geopf", "patrinat_sic:sic",
+    ("zsc", "patrinat_sic:sic",
      "Natura 2000 — ZSC, directive Habitats", "protection", "#4a7fa5"),
-    ("zps", "geopf", "patrinat_zps:zps",
+    ("zps", "patrinat_zps:zps",
      "Natura 2000 — ZPS, directive Oiseaux", "protection", "#93b4cc"),
-    ("apb", "geopf", "patrinat_apb:apb",
+    ("apb", "patrinat_apb:apb",
      "Arrêté de protection de biotope", "protection", "#8a6ea8"),
-    ("rnn", "geopf", "patrinat_rnn:rnn",
+    ("rnn", "patrinat_rnn:rnn",
      "Réserve naturelle nationale", "protection", "#6b4f80"),
-    ("rnr", "geopf", "patrinat_rnr:rnr",
+    ("rnr", "patrinat_rnr:rnr",
      "Réserve naturelle régionale", "protection", "#ac96c4"),
-    ("pnr", "geopf", "patrinat_pnr:pnr",
+    ("pnr", "patrinat_pnr:pnr",
      "Parc naturel régional", "protection", "#4f9d94"),
-    ("ramsar", "geopf", "patrinat_ramsar:ramsar",
+    ("ramsar", "patrinat_ramsar:ramsar",
      "Site Ramsar", "protection", "#7fbfb5"),
-    ("zhumide", "geopf", "TOURBIERES_ZONES-HUMIDES.BCAE:bcae",
+    ("zhumide", "TOURBIERES_ZONES-HUMIDES.BCAE:bcae",
      "Zones humides et tourbières BCAE", "protection", "#a9cfc9"),
-    ("nitrate", "sandre", "sa:ZoneVuln_delimitation_FXX",
-     "Zone vulnérable aux nitrates", "pression", "#c9954f"),
-    ("eutroph", "sandre", "sa:ZoneSensible_FXX_ZRPE_2",
-     "Zone sensible à l'eutrophisation", "pression", "#b5705f"),
 )
 
 # Attributs portant le nom du site, dans l'ordre de preference. Les couches de
-# l'INPN partagent un schema unique (nom_site, id_mnhn, url_fiche) ; celles du
-# Sandre et la couche BCAE ont chacune le leur.
-NAME_KEYS = ("nom_site", "NomZoneVuln", "NomZS", "NomCourtZS", "type_zone")
-CODE_KEYS = ("id_mnhn", "CdEuZoneVuln", "CdEuZS", "id_local")
-URL_KEYS = ("url_fiche", "URLTexteReglem")
+# l'INPN partagent un schema unique (nom_site, id_mnhn, url_fiche) ; la couche
+# BCAE a le sien.
+NAME_KEYS = ("nom_site", "type_zone")
+CODE_KEYS = ("id_mnhn", "id_local")
+URL_KEYS = ("url_fiche",)
 
 # Les geometries retenues sont unies par paquets plutot qu'en une fois. Une
 # union de plusieurs milliers de polygones - la couche BCAE en compte beaucoup
@@ -125,7 +128,7 @@ def _clip(geometry, basin):
     return clipped
 
 
-def _geopf_sites(typename, basin, bbox):
+def _sites(typename, basin, bbox):
     """Sites d'une couche de la Geoplateforme rencontrant le bassin."""
     for page in wfs_pages(typename, bbox=bbox, timeout=90):
         for feature in page:
@@ -140,23 +143,13 @@ def _geopf_sites(typename, basin, bbox):
         del page
 
 
-def _sandre_sites(typename, basin):
-    """Sites d'une couche Sandre rencontrant le bassin."""
-    for feature, geometry in sandre.features_in(typename, basin):
-        clipped = _clip(geometry, basin)
-        if clipped is not None:
-            yield sandre.attributes(feature), clipped
-
-
 def _zonage(entry, basin, total, bbox):
     """Une couche : ses sites, sa surface d'union, sa part du bassin."""
-    key, source, typename, label, nature, color = entry
-    reader = (_geopf_sites(typename, basin, bbox) if source == "geopf"
-              else _sandre_sites(typename, basin))
+    key, typename, label, nature, color = entry
 
     sites = []
     geometries = []
-    for properties, clipped in reader:
+    for properties, clipped in _sites(typename, basin, bbox):
         area = clipped.area()
         sites.append({
             "nom": _first(properties, NAME_KEYS) or label,
@@ -194,13 +187,26 @@ def _zonage(entry, basin, total, bbox):
     }
 
 
+def _zonage_safe(entry, basin, total, bbox):
+    """Une couche, sans lever : (resultat, erreur), l'un des deux valant None.
+
+    Necessaire pour ramasser le resultat d'un futur sans que l'exception
+    d'une couche n'echappe au fil qui l'a lancee.
+    """
+    try:
+        return _zonage(entry, basin, total, bbox), None
+    except (GeoserviceError, RuntimeError) as exc:
+        return None, "{0} : {1}".format(entry[2], exc)
+
+
 def compute(basin, keys=None, progress=None):
-    """Zonages environnementaux du bassin, couche par couche.
+    """Zonages environnementaux du bassin, une requete par couche, de front.
 
     keys restreint le relevé aux zonages demandes, dans l'ordre de la table ;
-    None les prend tous. Interroger douze couches nationales prend une bonne
-    vingtaine de secondes sur un bassin moyen, et l'utilisateur qui n'a
-    besoin que de Natura 2000 n'a pas a payer les onze autres.
+    None les prend tous. Chaque couche attend son propre aller-retour
+    reseau, et rien ne les rend dependantes l'une de l'autre : dix requetes
+    sequentielles font facilement plusieurs secondes, lancees ensemble le
+    total se rapproche de la plus lente d'entre elles.
 
     Une couche indisponible ne fait pas echouer les suivantes : elle est
     signalee dans la liste des erreurs et le rapport reste produit.
@@ -212,18 +218,42 @@ def compute(basin, keys=None, progress=None):
     box = basin.boundingBox()
     bbox = (box.xMinimum(), box.yMinimum(), box.xMaximum(), box.yMaximum())
     wanted = None if keys is None else set(keys)
+    entries = [e for e in ZONAGES if wanted is None or e[0] in wanted]
 
-    zonages = []
+    results = {}
     erreurs = []
-    for entry in ZONAGES:
-        if wanted is not None and entry[0] not in wanted:
-            continue
+
+    if len(entries) == 1:
+        result, error = _zonage_safe(entries[0], basin, total, bbox)
+        if error:
+            erreurs.append(error)
+        else:
+            results[entries[0][0]] = result
         if progress:
-            progress("Zonages : {0}...".format(entry[3]))
-        try:
-            zonages.append(_zonage(entry, basin, total, bbox))
-        except (GeoserviceError, RuntimeError) as exc:
-            erreurs.append("{0} : {1}".format(entry[3], exc))
+            progress("Zonages : {0}...".format(entries[0][2]))
+    elif entries:
+        if progress:
+            progress("Zonages : {0} couches, en parallèle...".format(
+                len(entries)))
+        with ThreadPoolExecutor(max_workers=len(entries)) as pool:
+            futures = {
+                pool.submit(_zonage_safe, entry, basin, total, bbox): entry
+                for entry in entries
+            }
+            for future in as_completed(futures):
+                entry = futures[future]
+                result, error = future.result()
+                if progress:
+                    progress("Zonages : {0}...".format(entry[2]))
+                if error:
+                    erreurs.append(error)
+                else:
+                    results[entry[0]] = result
+
+    # L'ordre du catalogue est reconstitue apres coup : les reponses du pool
+    # arrivent dans l'ordre ou le serveur les rend, pas dans celui de la
+    # table, et le rapport doit toujours lire les zonages dans le meme ordre.
+    zonages = [results[e[0]] for e in entries if e[0] in results]
 
     # Le total est une union et non une somme : voir l'en-tete du module.
     covered = _union([z["geometrie"] for z in zonages if z["geometrie"]])
@@ -243,5 +273,5 @@ def compute(basin, keys=None, progress=None):
         "total_pct": min(100.0, 100.0 * union_area / total),
         "nb_sites": sum(z["nb_sites"] for z in zonages),
         "erreurs": erreurs,
-        "source": "INPN / Patrinat (Géoplateforme) et Sandre (eaufrance)",
+        "source": "INPN / Patrinat (Géoplateforme)",
     }

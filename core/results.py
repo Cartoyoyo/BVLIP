@@ -192,6 +192,8 @@ BASIN_FIELDS = [
      "Nombre de bâtiments BD TOPO"),
     ("zone_hab_pct", D, 6, 2, "ocs.zone_habitation_pct",
      "Zones d'habitation BD TOPO (% de la surface)"),
+    ("population_est", D, 12, 0, "population.population_estimee",
+     "Population estimée (habitants)"),
     # Deux totaux distincts, et l'intitule doit dire lequel : le couvert de la
     # BD Foret comprend landes et formations herbacees, la surface boisee non.
     ("foret_ha", D, 12, 2, "foret.surface_ha",
@@ -304,14 +306,6 @@ BASIN_FIELDS = [
      "Zones humides et tourbières BCAE (ha)"),
     ("zhumide_pct", D, 6, 1, "zonages.zhumide_pct",
      "Zones humides et tourbières BCAE (% de la surface)"),
-    ("nitrate_ha", D, 12, 2, "zonages.nitrate_ha",
-     "Zone vulnérable aux nitrates (ha)"),
-    ("nitrate_pct", D, 6, 1, "zonages.nitrate_pct",
-     "Zone vulnérable aux nitrates (% de la surface)"),
-    ("eutroph_ha", D, 12, 2, "zonages.eutroph_ha",
-     "Zone sensible à l'eutrophisation (ha)"),
-    ("eutroph_pct", D, 6, 1, "zonages.eutroph_pct",
-     "Zone sensible à l'eutrophisation (% de la surface)"),
     ("zonage_ha", D, 12, 2, "zonages.total_ha",
      "Total sous zonage, sans double compte (ha)"),
     ("zonage_pct", D, 6, 1, "zonages.total_pct",
@@ -577,7 +571,7 @@ REPORT_SECTIONS = [
     ]),
     ("Occupation du sol", [
         "ocs_dominante", "ocs_artif_pct", "ocs_agri_pct", "ocs_foret_pct",
-        "bati_ha", "bati_nb", "zone_hab_pct",
+        "bati_ha", "bati_nb", "zone_hab_pct", "population_est",
         "peupl_pct", "foret_feui_pct", "foret_coni_pct",
     ]),
     # Les zonages sont listes sans leur surface en hectares : la part du
@@ -592,7 +586,7 @@ REPORT_SECTIONS = [
     ("Zonages environnementaux", [
         "znieff1_pct", "znieff2_pct", "zsc_pct", "zps_pct", "apb_pct",
         "rnn_pct", "rnr_pct", "pnr_pct", "ramsar_pct", "zhumide_pct",
-        "nitrate_pct", "eutroph_pct", "zonage_pct", "zonage_nb",
+        "zonage_pct", "zonage_nb",
     ]),
     ("Masses d'eau et hydroécorégion", [
         "me_code_eu", "me_nom", "me_surface_km2", "me_categorie",
@@ -773,7 +767,8 @@ def build_attributes(delineation_result, network_result, click_point,
                      metrics_values=None, water_body=None, basin_id=None,
                      land_cover=None, refined=None, protected=None,
                      structures=None, groundwater=None, hydroecoregion=None,
-                     agriculture=None, steu=None, prelevements=None):
+                     agriculture=None, steu=None, prelevements=None,
+                     population=None):
     """Assemble les valeurs des champs du bassin, par groupe de provenance."""
     basin_id = basin_id or datetime.now().strftime("BV_%Y%m%d_%H%M%S")
     stream = network_result.get("stream") or {}
@@ -847,6 +842,7 @@ def build_attributes(delineation_result, network_result, click_point,
         "hydrometrie": structures.get("hydrometrie") or {},
         "steu": steu or {},
         "prelevements": prelevements or {},
+        "population": population or {},
     }, basin_id
 
 
@@ -1046,9 +1042,8 @@ def zonage_features(fields, protected, basin_id):
     L'ordre n'est pas un detail d'ecriture : QGIS dessine les entites dans
     l'ordre ou elles arrivent, et la derniere passe au-dessus. Les sites sont
     donc classes par surface decroissante, pour que les petits se posent sur
-    les grands. Range dans l'ordre du catalogue, la zone sensible a
-    l'eutrophisation - cent pour cent du bassin sur la Besbre - arriverait en
-    dernier et masquerait a elle seule les onze autres zonages.
+    les grands - range dans l'ordre du catalogue, un zonage qui couvre tout
+    le bassin masquerait a lui seul tous ceux qui le suivent.
     """
     sites = [
         (zonage, site)
@@ -1110,7 +1105,7 @@ def build_layers(result, click_point, basin_id=None):
         result.get("protected"), result.get("structures"),
         result.get("groundwater"), result.get("hydroecoregion"),
         result.get("agriculture"), result.get("steu"),
-        result.get("prelevements"),
+        result.get("prelevements"), result.get("population"),
     )
 
     basin = _memory_layer("Polygon", "Bassin versant", BASIN_FIELDS)
@@ -1827,8 +1822,23 @@ def add_to_project(layers, group_name="BVLIP", iface=None, zoom=True):
             cible.addLayer(layer)
 
     if zoom and iface is not None:
+        from qgis.core import QgsCoordinateTransform
+
         extent = layers["bassin"].extent()
         extent.grow(extent.width() * 0.1)
-        iface.mapCanvas().setExtent(extent)
-        iface.mapCanvas().refresh()
+        canvas = iface.mapCanvas()
+        # Le bassin est toujours produit en Lambert 93 (CRS ci-dessus), mais
+        # le canevas peut se trouver dans une autre projection : un fond de
+        # plan XYZ (OpenTopoMap, OSM...) impose la sienne au projet des son
+        # ajout. Sans transformation, l'emprise est appliquee telle quelle a
+        # un canevas qui ne parle pas les memes coordonnees, et le cadrage
+        # atterrit n'importe ou plutot que sur le bassin.
+        canvas_crs = canvas.mapSettings().destinationCrs()
+        if canvas_crs != CRS:
+            transform = QgsCoordinateTransform(
+                CRS, canvas_crs, project.transformContext()
+            )
+            extent = transform.transformBoundingBox(extent)
+        canvas.setExtent(extent)
+        canvas.refresh()
     return group

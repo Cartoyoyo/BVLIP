@@ -90,6 +90,32 @@ TR = {
         "pt": "Nenhum exutório definido",
         "de": "Kein Auslass definiert",
     },
+    "btn_opentopomap": {
+        "fr": "Fond de carte",
+        "en": "Basemap",
+        "es": "Mapa base",
+        "pt": "Mapa base",
+        "de": "Hintergrundkarte",
+    },
+    "opentopomap_tip": {
+        "fr": "Ajoute le fond de plan OpenTopoMap au projet, pour mieux "
+              "repérer le point de l'exutoire sur le relief.",
+        "en": "Adds the OpenTopoMap basemap to the project, to help locate "
+              "the outlet point against the terrain.",
+        "es": "Añade el mapa base OpenTopoMap al proyecto, para ubicar mejor "
+              "el punto de salida sobre el relieve.",
+        "pt": "Adiciona o mapa base OpenTopoMap ao projeto, para localizar "
+              "melhor o exutório sobre o relevo.",
+        "de": "Fügt den OpenTopoMap-Hintergrund zum Projekt hinzu, um den "
+              "Auslasspunkt im Relief besser zu verorten.",
+    },
+    "opentopomap_added": {
+        "fr": "Fond OpenTopoMap ajouté au projet.",
+        "en": "OpenTopoMap basemap added to the project.",
+        "es": "Mapa base OpenTopoMap añadido al proyecto.",
+        "pt": "Mapa base OpenTopoMap adicionado ao projeto.",
+        "de": "OpenTopoMap-Hintergrund zum Projekt hinzugefügt.",
+    },
     "outlet_set": {
         "fr": "Exutoire : {x:.1f} ; {y:.1f} (Lambert 93)",
         "en": "Outlet: {x:.1f} ; {y:.1f} (Lambert 93)",
@@ -414,21 +440,6 @@ TR = {
         "pt": "Zonas húmidas e turfeiras",
         "de": "Feuchtgebiete und Moore",
     },
-    "ds_nitrate": {
-        "fr": "Zone vulnérable aux nitrates",
-        "en": "Nitrate vulnerable zone",
-        "es": "Zona vulnerable a nitratos",
-        "pt": "Zona vulnerável aos nitratos",
-        "de": "Nitratgefährdetes Gebiet",
-    },
-    "ds_eutroph": {
-        "fr": "Zone sensible à l'eutrophisation",
-        "en": "Area sensitive to eutrophication",
-        "es": "Zona sensible a la eutrofización",
-        "pt": "Zona sensível a eutrofização",
-        "de": "Eutrophierungsempfindliches Gebiet",
-    },
-
     # --- Donnees : onglet Eau ---------------------------------------------
     "ds_masse_eau": {
         "fr": "Masse d'eau DCE de surface",
@@ -798,46 +809,6 @@ TR = {
               "Agrarpolitik. Hier ebenso hydrologisch wie ökologisch "
               "relevant: sie speichern und geben Wasser ab.",
     },
-    "dsinfo_nitrate": {
-        "fr": "Zone vulnérable aux nitrates d'origine agricole, délimitée au "
-              "titre de la directive Nitrates. Ce zonage ne dit pas ce que le "
-              "bassin a de remarquable mais ce qu'il subit : programme "
-              "d'actions obligatoire pour les exploitations qui s'y trouvent.",
-        "en": "Nitrate vulnerable zone under the Nitrates Directive. This "
-              "designation says not what is remarkable about the basin but "
-              "what it undergoes: a mandatory action programme applies to "
-              "farms within it.",
-        "es": "Zona vulnerable a los nitratos de origen agrario (directiva "
-              "Nitratos). No dice lo que la cuenca tiene de notable sino lo "
-              "que sufre : programa de actuación obligatorio.",
-        "pt": "Zona vulnerável aos nitratos de origem agrícola (diretiva "
-              "Nitratos). Não diz o que a bacia tem de notável mas o que "
-              "sofre : programa de ação obrigatório.",
-        "de": "Nitratgefährdetes Gebiet nach der Nitratrichtlinie. Sagt "
-              "nicht, was am Gebiet bemerkenswert ist, sondern was es "
-              "erleidet: verpflichtendes Aktionsprogramm für Betriebe.",
-    },
-    "dsinfo_eutroph": {
-        "fr": "Zone sensible à l'eutrophisation au titre de la directive eaux "
-              "résiduaires urbaines : le milieu y reçoit des rejets qu'il ne "
-              "dilue pas assez, ce qui impose un traitement poussé de l'azote "
-              "ou du phosphore aux stations d'épuration. Vaste : de grands "
-              "bassins entiers sont classes.",
-        "en": "Area sensitive to eutrophication under the urban waste water "
-              "directive: the receiving water does not dilute discharges "
-              "enough, requiring advanced nitrogen or phosphorus treatment at "
-              "treatment plants. Vast: entire large basins are designated.",
-        "es": "Zona sensible a la eutrofización (directiva de aguas "
-              "residuales urbanas) : exige tratamiento avanzado de nitrógeno "
-              "o fósforo. Muy extensa : cuencas enteras están clasificadas.",
-        "pt": "Zona sensível a eutrofização (diretiva das águas residuais "
-              "urbanas) : exige tratamento avançado de azoto ou fósforo. "
-              "Muito vasta : bacias inteiras estão classificadas.",
-        "de": "Eutrophierungsempfindliches Gebiet nach der "
-              "Kommunalabwasserrichtlinie: erfordert weitergehende "
-              "Stickstoff- oder Phosphorbehandlung. Sehr großflächig.",
-    },
-
     "dsinfo_masse_eau": {
         "fr": "Masse d'eau de surface au sens de la directive cadre sur "
               "l'eau : code européen, dénomination, surface de son bassin "

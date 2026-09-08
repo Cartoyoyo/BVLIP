@@ -1045,10 +1045,6 @@ SOURCES = (
      "patrinat_ramsar"),
     ("Zonages environnementaux", "Zones humides et tourbières BCAE",
      "Géoplateforme, WFS", "TOURBIERES_ZONES-HUMIDES.BCAE:bcae"),
-    ("Zonages environnementaux", "Zones vulnérables aux nitrates",
-     "Sandre (eaufrance) — WFS 1.1", "sa:ZoneVuln_delimitation_FXX"),
-    ("Zonages environnementaux", "Zones sensibles à l'eutrophisation",
-     "Sandre (eaufrance) — WFS 1.1", "sa:ZoneSensible_FXX_ZRPE_2"),
     ("Masses d'eau", "Masse d'eau de surface et bassin versant spécifique",
      "Sandre (eaufrance) — WFS 1.1",
      "sa:MasseDEauRiviere_VRAP2022_FXX, "

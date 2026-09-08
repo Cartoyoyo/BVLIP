@@ -84,6 +84,13 @@ BTN_PICK = (
     "QPushButton:checked{background:#c0392b}"
     "QPushButton:disabled{background:#95a5a6}"
 )
+# Le fond de plan ne lance rien non plus : meme famille que les boutons de
+# selection.
+BTN_BASEMAP = (
+    "QPushButton{background:#ecf0f1;color:#2c3e50;border:1px solid #bdc3c7;"
+    "border-radius:4px;font-size:11px;padding:2px 8px}"
+    "QPushButton:hover{background:#dfe4e6}"
+)
 # Les deux boutons de selection ne lancent rien : ils se presentent donc en
 # retrait, comme les liens d'une barre d'outils et non comme des actions.
 BTN_SMALL = (
@@ -170,12 +177,24 @@ class BvlipDock(QDockWidget):
         # Exutoire
         self.grp_outlet = QGroupBox()
         outlet_layout = QVBoxLayout()
+        pick_row = QHBoxLayout()
+        pick_row.setSpacing(6)
         self.btn_pick = QPushButton()
         self.btn_pick.setCheckable(True)
         self.btn_pick.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_pick.setStyleSheet(BTN_PICK)
         self.btn_pick.clicked.connect(self._on_pick_toggled)
-        outlet_layout.addWidget(self.btn_pick)
+        pick_row.addWidget(self.btn_pick, 1)
+
+        # Fond de plan facultatif : un raccourci, pas une action liee au
+        # calcul. Il vit donc a cote du bouton de pointage plutot que dans
+        # la pile des boutons d'execution, avec le meme poids dans la ligne.
+        self.btn_basemap = QPushButton()
+        self.btn_basemap.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_basemap.setStyleSheet(BTN_BASEMAP)
+        self.btn_basemap.clicked.connect(self._add_opentopomap)
+        pick_row.addWidget(self.btn_basemap, 1)
+        outlet_layout.addLayout(pick_row)
 
         self.lbl_outlet = QLabel()
         font_outlet = QFont()
@@ -309,8 +328,8 @@ class BvlipDock(QDockWidget):
         # Tous les boutons a la meme hauteur, et les deux boutons cote a cote
         # a la meme largeur : c'est la regularite qui rend une pile de boutons
         # lisible, pas la taille de chacun.
-        for button in (self.btn_pick, self.btn_run, self.btn_cancel,
-                       self.btn_report, self.btn_preview,
+        for button in (self.btn_pick, self.btn_basemap, self.btn_run,
+                       self.btn_cancel, self.btn_report, self.btn_preview,
                        self.btn_view3d):
             button.setCursor(Qt.CursorShape.PointingHandCursor)
             button.setMinimumHeight(BTN_HEIGHT)
@@ -429,6 +448,8 @@ class BvlipDock(QDockWidget):
         self.setWindowTitle(tr("plugin_title", lang))
         self.grp_outlet.setTitle(tr("group_outlet", lang))
         self.btn_pick.setText(tr("btn_pick", lang))
+        self.btn_basemap.setText(tr("btn_opentopomap", lang))
+        self.btn_basemap.setToolTip(tr("opentopomap_tip", lang))
         self.grp_options.setTitle(tr("group_options", lang))
         for index, tab in enumerate(catalogue.TABS):
             self.tabs_options.setTabText(
@@ -496,6 +517,49 @@ class BvlipDock(QDockWidget):
                 box.setChecked(checked)
                 box.blockSignals(False)
         self._save_options()
+
+    def _add_opentopomap(self):
+        """Ajoute le fond de plan OpenTopoMap au projet, en couche XYZ.
+
+        Un simple raccourci de confort : le releve du relief sous les yeux
+        aide a poser l'exutoire au bon endroit, sans passer par le
+        gestionnaire de connexions XYZ de QGIS.
+        """
+        from qgis.core import QgsProject, QgsRasterLayer
+
+        from ..core.results import CRS
+
+        name = "OpenTopoMap"
+        project = QgsProject.instance()
+        for layer in project.mapLayers().values():
+            if layer.name() == name:
+                self._status(tr("opentopomap_added", self.lang))
+                return
+
+        url = ("type=xyz&url=https://a.tile.opentopomap.org/"
+               "%7Bz%7D/%7Bx%7D/%7By%7D.png&zmax=17&zmin=0")
+        layer = QgsRasterLayer(url, name, "wms")
+        if not layer.isValid():
+            self.log(tr("done_error", self.lang,
+                        error="OpenTopoMap: " + layer.error().message()))
+            return
+
+        # La tuile XYZ n'existe qu'en Web Mercator : sur un projet dont le
+        # CRS n'a encore jamais ete choisi, QGIS adopte la projection de la
+        # premiere couche ajoutee, le canevas bascule en EPSG:3857, et le
+        # cadrage sur le bassin en fin de calcul (toujours produit en
+        # Lambert 93) atterrit hors champ. Le CRS d'avant l'ajout est donc
+        # garde : s'il etait deja valide - Lambert 93 ou un autre, choisi par
+        # le projet lui-meme - on le restaure tel quel apres coup ; s'il n'y
+        # en avait pas encore, 2154 devient le choix par defaut.
+        crs_before = project.crs()
+        project.addMapLayer(layer)
+        if crs_before.isValid():
+            project.setCrs(crs_before)
+        else:
+            project.setCrs(CRS)
+        self._status(tr("opentopomap_added", self.lang))
+        self.log(tr("opentopomap_added", self.lang))
 
     def _on_pick_toggled(self, checked):
         if checked:
