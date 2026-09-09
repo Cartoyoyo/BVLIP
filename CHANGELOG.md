@@ -3,6 +3,17 @@
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le
 plugin la [gestion sémantique de version](https://semver.org/lang/fr/).
 
+## [1.2.1] - 2026-09-09
+
+### Modifié
+
+- **Palette des zonages environnementaux recolorisée en teintes franches et
+  saturées** (vert flash pour les ZNIEFF, bleus, violets, turquoise, cyan et
+  magenta pour les protections réglementaires) afin de rester repérable
+  au-dessus d'un fond de plan chargé. L'aplat des polygones (55/255) et
+  l'épaisseur du contour (0,35 mm) sont ajustés en conséquence pour que les
+  recouvrements restent lisibles avec ces teintes plus vives.
+
 ## [1.2.0] - 2026-09-08
 
 ### Ajouté

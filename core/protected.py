@@ -49,37 +49,33 @@ from .geoservices import GeoserviceError, wfs_pages
 # La couleur sert a la couche QGIS et a la carte du rapport, une teinte par
 # zonage. Elle suit la nature plutot que le hasard : verts pour les
 # inventaires ZNIEFF, bleus et violets pour les protections reglementaires,
-# turquoises pour les territoires geres, ocre et terre pour les pressions
-# subies. Un lecteur qui ne connait pas les sigles voit deja de quel ordre
-# releve chaque polygone.
+# turquoises pour les territoires geres. Un lecteur qui ne connait pas les
+# sigles voit deja de quel ordre releve chaque polygone.
 #
-# Les teintes sont volontairement rabattues, loin des couleurs franches d'une
-# palette d'ecran. Sur la carte du rapport, une vingtaine de polygones
-# translucides se superposent au-dessus d'un fond de plan deja charge : des
-# couleurs saturees y font une bouillie ou plus rien ne se distingue, alors
-# que des tons rompus laissent voir et le fond, et le chevelu, et les
-# recouvrements.
+# Les teintes sont volontairement franches et saturees, choisies pour se
+# detacher nettement du fond de plan et rester reperables meme en couche
+# translucide ou sur un ecran de terrain en plein soleil.
 ZONAGES = (
     ("znieff1", "patrinat_znieff1:znieff1",
-     "ZNIEFF de type I", "inventaire", "#4f9d69"),
+     "ZNIEFF de type I", "inventaire", "#39FF14"),
     ("znieff2", "patrinat_znieff2:znieff2",
-     "ZNIEFF de type II", "inventaire", "#a3c4a8"),
+     "ZNIEFF de type II", "inventaire", "#ADFF2F"),
     ("zsc", "patrinat_sic:sic",
-     "Natura 2000 — ZSC, directive Habitats", "protection", "#4a7fa5"),
+     "Natura 2000 — ZSC, directive Habitats", "protection", "#0066FF"),
     ("zps", "patrinat_zps:zps",
-     "Natura 2000 — ZPS, directive Oiseaux", "protection", "#93b4cc"),
+     "Natura 2000 — ZPS, directive Oiseaux", "protection", "#00BFFF"),
     ("apb", "patrinat_apb:apb",
-     "Arrêté de protection de biotope", "protection", "#8a6ea8"),
+     "Arrêté de protection de biotope", "protection", "#9D00FF"),
     ("rnn", "patrinat_rnn:rnn",
-     "Réserve naturelle nationale", "protection", "#6b4f80"),
+     "Réserve naturelle nationale", "protection", "#7A00CC"),
     ("rnr", "patrinat_rnr:rnr",
-     "Réserve naturelle régionale", "protection", "#ac96c4"),
+     "Réserve naturelle régionale", "protection", "#E000FF"),
     ("pnr", "patrinat_pnr:pnr",
-     "Parc naturel régional", "protection", "#4f9d94"),
+     "Parc naturel régional", "protection", "#00FFB2"),
     ("ramsar", "patrinat_ramsar:ramsar",
-     "Site Ramsar", "protection", "#7fbfb5"),
+     "Site Ramsar", "protection", "#00FFFF"),
     ("zhumide", "TOURBIERES_ZONES-HUMIDES.BCAE:bcae",
-     "Zones humides et tourbières BCAE", "protection", "#a9cfc9"),
+     "Zones humides et tourbières BCAE", "protection", "#FF00A6"),
 )
 
 # Attributs portant le nom du site, dans l'ordre de preference. Les couches de

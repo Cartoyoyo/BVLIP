@@ -376,14 +376,15 @@ BASIN_FIELDS = [
 
 # Aplat et contour des zonages.
 #
-# L'aplat est tres clair et le trait fin, parce que ces polygones se comptent
+# L'aplat reste clair et le trait fin, parce que ces polygones se comptent
 # par dizaines et se superposent. Le premier essai - aplat a 60 sur 255,
 # contour a 0,5 mm - donnait une carte illisible : vingt-six contours francs
 # qui se croisent l'emportaient sur le chevelu et sur le fond de plan. A 30 et
-# 0,26 mm, les zonages se lisent sans prendre le pas sur ce qu'ils habillent,
+# 0,26 mm les zonages se distinguaient trop peu du fond de plan ; a 55 et
+# 0,35 mm ils restent lisibles sans reprendre le pas sur ce qu'ils habillent,
 # et le cumul des aplats continue de signaler les recouvrements.
-ZONAGE_FILL_ALPHA = 30
-ZONAGE_OUTLINE_MM = "0.26"
+ZONAGE_FILL_ALPHA = 55
+ZONAGE_OUTLINE_MM = "0.35"
 
 # Zonages environnementaux, un enregistrement par site et non par type : c'est
 # le site qui porte un nom, un code et une fiche, et c'est de lui qu'on veut la
@@ -1293,7 +1294,7 @@ def _style_zonages(layer):
 
     presents = {feature["cle"] for feature in layer.getFeatures()}
     categories = []
-    for key, _source, _typename, label, _nature, color in ZONAGES:
+    for key, _typename, label, _nature, color in ZONAGES:
         if key not in presents:
             continue
         # La couleur passe en r,g,b,a et non en #rrggbbaa : QGIS ne lit pas
