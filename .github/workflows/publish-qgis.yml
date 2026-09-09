@@ -1,0 +1,58 @@
+name: Publier sur plugins.qgis.org
+
+# Se declenche a chaque tag vX.Y.Z pousse sur le depot (cf. tools/publish.py).
+# Les identifiants OSGeo sont lus dans les secrets du depot (Settings > Secrets
+# and variables > Actions) : OSGEO_USER et OSGEO_PASSWORD. Ils ne transitent
+# jamais en clair dans les journaux.
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Installer les controles de prepublication
+        run: pip install bandit detect-secrets
+
+      - name: Construire le ZIP (meme perimetre que le depot)
+        id: build
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/dist"
+          python tools/build_zip.py --out "$GITHUB_WORKSPACE/dist"
+          echo "zip=$(ls "$GITHUB_WORKSPACE"/dist/*.zip)" >> "$GITHUB_OUTPUT"
+
+      - name: Extraire le ZIP pour le controle (perimetre reellement envoye)
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/scan"
+          unzip -q "${{ steps.build.outputs.zip }}" -d "$GITHUB_WORKSPACE/scan"
+
+      - name: Bandit (bloquant sur plugins.qgis.org)
+        run: bandit -r "$GITHUB_WORKSPACE/scan" -q
+
+      - name: detect-secrets (bloquant sur plugins.qgis.org)
+        run: |
+          detect-secrets scan "$GITHUB_WORKSPACE/scan" --all-files > /tmp/secrets.json
+          python -c "import json,sys; sys.exit(1 if json.load(open('/tmp/secrets.json'))['results'] else 0)"
+
+      - name: Verifier que le tag correspond a metadata.txt
+        run: |
+          version=$(grep '^version=' metadata.txt | cut -d= -f2)
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$version" != "$tag" ]; then
+            echo "Le tag $GITHUB_REF_NAME ne correspond pas a version=$version dans metadata.txt"
+            exit 1
+          fi
+
+      - name: Publier sur plugins.qgis.org
+        env:
+          OSGEO_USER: ${{ secrets.OSGEO_USER }}
+          OSGEO_PASSWORD: ${{ secrets.OSGEO_PASSWORD }}
+        run: python tools/publish.py --zip "${{ steps.build.outputs.zip }}"
