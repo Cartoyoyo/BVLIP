@@ -42,6 +42,7 @@ class DelineateWatershedAlgorithm(QgsProcessingAlgorithm):
     THRESHOLD = "THRESHOLD"
     DATASETS = "DATASETS"
     OVERSIZE = "OVERSIZE"
+    SMALL_BASIN = "SMALL_BASIN"
     OUTPUT = "OUTPUT"
     OUTPUT_OUTLETS = "OUTPUT_OUTLETS"
 
@@ -107,6 +108,13 @@ class DelineateWatershedAlgorithm(QgsProcessingAlgorithm):
             "l'emprise garde l'allure d'un bassin juste et rien en aval ne "
             "sait plus qu'il est faux. Cochez alors l'option des bassins "
             "hors gabarit, ou reprenez l'exutoire plus en amont.\n\n"
+            "Quand aucun cours d'eau BD TOPO n'est numerise a proximite du "
+            "point - frequent en tete de bassin versant, sur les fosses et "
+            "ruisseaux intermittents - le traitement echoue par defaut. "
+            "L'option du mode petit bassin versant recale alors l'exutoire "
+            "sur le seul MNT, sans le filtre du lineaire BD TOPO ni "
+            "controle de coherence en aval : le resultat n'est pas "
+            "confirme, a verifier au cas par cas.\n\n"
             "Ne fonctionne que sur le territoire francais couvert par le "
             "RGE ALTI."
         )
@@ -165,6 +173,14 @@ class DelineateWatershedAlgorithm(QgsProcessingAlgorithm):
                     "troncons : tres long, maille grossiere)"),
             defaultValue=False,
         ))
+        self.addParameter(QgsProcessingParameterBoolean(
+            self.SMALL_BASIN,
+            self.tr("Mode petit bassin versant : si aucun cours d'eau "
+                    "BD TOPO n'est accessible autour du point, recaler "
+                    "l'exutoire sur le MNT seul, sans controle de "
+                    "coherence sur le reseau"),
+            defaultValue=False,
+        ))
         self.addParameter(QgsProcessingParameterFeatureSink(
             self.OUTPUT, self.tr("Bassins versants"),
             QgsProcessing.TypeVectorPolygon,
@@ -199,6 +215,8 @@ class DelineateWatershedAlgorithm(QgsProcessingAlgorithm):
             ],
             allow_oversize=self.parameterAsBool(
                 parameters, self.OVERSIZE, context),
+            allow_small_basin=self.parameterAsBool(
+                parameters, self.SMALL_BASIN, context),
         )
 
         basin_fields = _fields(results.BASIN_FIELDS)

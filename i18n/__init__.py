@@ -1602,6 +1602,83 @@ TR = {
               "angehoben, der Lauf geht weiter.",
     },
 
+    # --- Aucun reseau BD TOPO a proximite ----------------------------------
+    "small_basin_title": {
+        "fr": "Aucun cours d'eau à proximité",
+        "en": "No watercourse nearby",
+        "es": "Ningún curso de agua cercano",
+        "pt": "Nenhum curso de água próximo",
+        "de": "Kein Gewässer in der Nähe",
+    },
+    "small_basin_text": {
+        "fr": "Aucun cours d'eau BD TOPO n'a été trouvé à moins de "
+              "{radius:.0f} m du point.",
+        "en": "No BD TOPO watercourse was found within {radius:.0f} m of "
+              "the point.",
+        "es": "No se encontró ningún curso de agua BD TOPO a menos de "
+              "{radius:.0f} m del punto.",
+        "pt": "Não foi encontrado nenhum curso de água BD TOPO a menos de "
+              "{radius:.0f} m do ponto.",
+        "de": "Innerhalb von {radius:.0f} m um den Punkt wurde kein "
+              "BD-TOPO-Gewässer gefunden.",
+    },
+    "small_basin_detail": {
+        "fr": "Le traitement peut recaler l'exutoire sur le seul modèle "
+              "numérique de terrain.",
+        "en": "The run can snap the outlet using the terrain model alone.",
+        "es": "El proceso puede recolocar el punto de salida usando solo "
+              "el modelo digital del terreno.",
+        "pt": "O processamento pode reposicionar o exutório usando apenas "
+              "o modelo digital de terreno.",
+        "de": "Der Lauf kann den Auslass allein anhand des Geländemodells "
+              "verschieben.",
+    },
+    "small_basin_go": {
+        "fr": "Continuer",
+        "en": "Continue",
+        "es": "Continuar",
+        "pt": "Continuar",
+        "de": "Fortfahren",
+    },
+    "small_basin_back": {
+        "fr": "Abandonner",
+        "en": "Abandon",
+        "es": "Abandonar",
+        "pt": "Abandonar",
+        "de": "Abbrechen",
+    },
+    "small_basin_status": {
+        "fr": "✘ Aucun cours d'eau à proximité : calcul non lancé.",
+        "en": "✘ No watercourse nearby: not computed.",
+        "es": "✘ Ningún curso de agua cercano: no calculada.",
+        "pt": "✘ Nenhum curso de água próximo: não calculada.",
+        "de": "✘ Kein Gewässer in der Nähe: nicht berechnet.",
+    },
+    "small_basin_log": {
+        "fr": "⚠ Aucun cours d'eau BD TOPO à moins de {radius:.0f} m du "
+              "point.",
+        "en": "⚠ No BD TOPO watercourse within {radius:.0f} m of the "
+              "point.",
+        "es": "⚠ Ningún curso de agua BD TOPO a menos de {radius:.0f} m "
+              "del punto.",
+        "pt": "⚠ Nenhum curso de água BD TOPO a menos de {radius:.0f} m "
+              "do ponto.",
+        "de": "⚠ Kein BD-TOPO-Gewässer innerhalb von {radius:.0f} m um "
+              "den Punkt.",
+    },
+    "small_basin_accepted": {
+        "fr": "Mode petit bassin versant demandé : recalage sur le MNT "
+              "seul, sans réseau de référence.",
+        "en": "Small-basin mode requested: snapping on the terrain model "
+              "alone, without a reference network.",
+        "es": "Modo cuenca pequeña solicitado: recolocado solo con el MDT, "
+              "sin red de referencia.",
+        "pt": "Modo bacia pequena pedido: reposicionamento apenas com o "
+              "MDT, sem rede de referência.",
+        "de": "Modus kleines Einzugsgebiet angefordert: Verschiebung nur "
+              "mit Geländemodell, ohne Referenznetz.",
+    },
+
     # --- A propos ---------------------------------------------------------
     "about_title": {
         "fr": "À propos de BVLIP", "en": "About BVLIP",

@@ -37,7 +37,7 @@ from qgis.PyQt.QtWidgets import (
 )
 
 from ..core import datasets as catalogue
-from ..core.network import SEED_FEATURE_MAX, OversizeBasinError
+from ..core.network import SEED_FEATURE_MAX, NoNetworkNearbyError, OversizeBasinError
 from ..i18n import tr
 from . import settings
 from .outlet_map_tool import OutletMapTool
@@ -148,6 +148,9 @@ class BvlipDock(QDockWidget):
         # garde-fou : l'accord donne une fois ne vaut pas pour la
         # suite.
         self._allow_oversize = False
+        # Meme principe pour le mode petit bassin versant, pose par la boite
+        # de dialogue de l'exutoire sans reseau a proximite.
+        self._allow_small_basin = False
         # Chevelu deja charge par un calcul refuse, a poursuivre. Il est lie
         # a un exutoire : changer de point l'invalide.
         self._resume = None
@@ -575,6 +578,7 @@ class BvlipDock(QDockWidget):
         # precedent : le chevelu amont n'est pas le meme.
         self._resume = None
         self._allow_oversize = False
+        self._allow_small_basin = False
         self.outlet = (x, y)
         self._refresh_outlet_label()
         self.btn_pick.setChecked(False)
@@ -691,12 +695,15 @@ class BvlipDock(QDockWidget):
         # sont relus a chaque lancement, donc une modification prend effet
         # sans rouvrir le panneau.
         options = settings.pipeline_options(
-            allow_oversize=self._allow_oversize
+            allow_oversize=self._allow_oversize,
+            allow_small_basin=self._allow_small_basin,
         )
-        # L'accord de calcul integral et le chevelu deja charge se consomment
-        # ici : ils valent pour ce lancement et pour lui seul. La reprise a
-        # ete recuperee plus haut, avant l'effacement du journal.
+        # L'accord de calcul integral, celui du mode petit bassin versant et
+        # le chevelu deja charge se consomment ici : ils valent pour ce
+        # lancement et pour lui seul. La reprise a ete recuperee plus haut,
+        # avant l'effacement du journal.
         self._allow_oversize = False
+        self._allow_small_basin = False
         self._resume = None
 
         self.last_result = None
@@ -746,6 +753,9 @@ class BvlipDock(QDockWidget):
         try:
             if isinstance(error, OversizeBasinError):
                 self._ask_oversize(error)
+                return
+            if isinstance(error, NoNetworkNearbyError):
+                self._ask_small_basin(error)
                 return
             if error:
                 self.log(tr("done_error", self.lang, error=error))
@@ -851,6 +861,43 @@ class BvlipDock(QDockWidget):
             # l'essentiel de l'attente.
             self._resume = error.state
             self.log(tr("oversize_accepted", self.lang))
+            # set_controls_enabled n'a pas encore ete rappele : le bloc
+            # finally de _on_finished s'en charge apres notre retour. On
+            # relance donc apres lui, et non d'ici.
+            QTimer.singleShot(0, self.run)
+
+    def _ask_small_basin(self, error):
+        """Aucun cours d'eau BD TOPO a proximite : annoncer, puis choisir.
+
+        C'est le lot frequent des tout petits bassins de tete de bassin
+        versant, que la BD TOPO ne numerise pas toujours. Le plugin peut
+        recaler l'exutoire uniquement sur le MNT, mais alors sans le filtre
+        qui ecarte les petits chenaux errones et sans controle de coherence
+        en aval : le refus reste le choix par defaut, celui qui montre le
+        mieux qu'il n'y a rien a confirmer.
+        """
+        self.log(tr("small_basin_log", self.lang,
+                    radius=error.snap_radius))
+        self._status(tr("small_basin_status", self.lang))
+        if self._alive(self.progress):
+            self.progress.setValue(0)
+
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Icon.Warning)
+        box.setWindowTitle(tr("small_basin_title", self.lang))
+        box.setText(tr("small_basin_text", self.lang,
+                       radius=error.snap_radius))
+        box.setInformativeText(tr("small_basin_detail", self.lang))
+        go = box.addButton(tr("small_basin_go", self.lang),
+                           QMessageBox.ButtonRole.DestructiveRole)
+        back = box.addButton(tr("small_basin_back", self.lang),
+                             QMessageBox.ButtonRole.RejectRole)
+        box.setDefaultButton(back)
+        box.exec_()
+
+        if box.clickedButton() is go:
+            self._allow_small_basin = True
+            self.log(tr("small_basin_accepted", self.lang))
             # set_controls_enabled n'a pas encore ete rappele : le bloc
             # finally de _on_finished s'en charge apres notre retour. On
             # relance donc apres lui, et non d'ici.

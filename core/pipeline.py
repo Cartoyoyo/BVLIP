@@ -109,7 +109,8 @@ class PipelineOptions:
                  simplify_cells=2.0, stream_threshold=200,
                  datasets=None, water_body_details=False,
                  max_pixels=None, refine_margin=REFINE_MARGIN, workdir=None,
-                 allow_oversize=False):
+                 allow_oversize=False, allow_small_basin=False,
+                 small_basin_buffer=network.SMALL_BASIN_BUFFER):
         self.snap_radius = snap_radius
         self.thalweg_radius = thalweg_radius
         # None : la maille s'ajuste a l'emprise et a la memoire disponible.
@@ -124,6 +125,11 @@ class PipelineOptions:
         # Leve le garde-fou d'emprise du reseau amont. Ne se met a True que
         # sur demande explicite : voir network.OversizeBasinError.
         self.allow_oversize = allow_oversize
+        # Bascule sur une emprise de secours, sans chevelu BD TOPO, quand
+        # aucun cours d'eau n'est accessible autour du point. Ne se met a
+        # True que sur demande explicite : voir network.NoNetworkNearbyError.
+        self.allow_small_basin = allow_small_basin
+        self.small_basin_buffer = small_basin_buffer
 
     def wants(self, *keys):
         """L'une au moins de ces donnees est-elle demandee ?"""
@@ -240,13 +246,25 @@ def _run(x, y, options, progress, feedback, cancelled, resume):
         return cancelled is not None and cancelled()
 
     step(0, "Emprise de calcul et accrochage de l'exutoire")
-    network_result = network.upstream_extent(
-        x, y,
-        snap_radius=options.snap_radius,
-        progress=lambda m: step(0, m),
-        allow_oversize=options.allow_oversize,
-        resume=resume,
-    )
+    try:
+        network_result = network.upstream_extent(
+            x, y,
+            snap_radius=options.snap_radius,
+            progress=lambda m: step(0, m),
+            allow_oversize=options.allow_oversize,
+            resume=resume,
+        )
+    except network.NoNetworkNearbyError:
+        if not options.allow_small_basin:
+            raise
+        # Pas de chevelu BD TOPO a proximite : on retombe sur une emprise
+        # carree autour du point, sans reseau de reference. Voir
+        # network.small_basin_extent pour ce que ca laisse de non verifie.
+        step(0, "Aucun cours d'eau BD TOPO a proximite : emprise de secours "
+                "sans reseau de reference (mode petit bassin versant).")
+        network_result = network.small_basin_extent(
+            x, y, buffer_m=options.small_basin_buffer,
+        )
     if stop():
         return None
 
@@ -327,6 +345,14 @@ def _run(x, y, options, progress, feedback, cancelled, resume):
         result["avertissements"].append(
             "Reseau amont incomplet : le plafond d'emprise a ete atteint "
             "avant d'avoir remonte tout le chevelu. Le bassin est tronque."
+        )
+    if network_result.get("small_basin"):
+        result["avertissements"].append(
+            "Mode petit bassin versant : aucun cours d'eau BD TOPO n'etait "
+            "accessible autour du point, l'exutoire n'a donc ete recale que "
+            "sur le MNT et aucun controle de coherence n'a pu s'appuyer sur "
+            "le reseau. Le lineaire hydrographique, la densite de drainage "
+            "et les cours d'eau nommes ne sont pas disponibles."
         )
     edge = _basin_on_edge(delineation_result["geometry"], dem_info)
     if edge:

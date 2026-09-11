@@ -32,7 +32,7 @@ from qgis.PyQt.QtCore import pyqtSignal
 from ..core.dem import DemError
 from ..core.delineation import DelineationError
 from ..core.geoservices import GeoserviceError
-from ..core.network import NetworkError, OversizeBasinError
+from ..core.network import NetworkError, NoNetworkNearbyError, OversizeBasinError
 from ..core.pipeline import run as run_pipeline
 
 
@@ -80,7 +80,7 @@ class BvlipTask(QgsTask):
                 cancelled=self.isCanceled,
                 resume=self.resume,
             )
-        except OversizeBasinError as exc:
+        except (OversizeBasinError, NoNetworkNearbyError) as exc:
             # Pas un echec technique mais une decision a prendre, et
             # elle revient a l'utilisateur. L'exception remonte telle
             # quelle : le panneau a besoin de ses chiffres pour poser

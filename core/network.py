@@ -28,6 +28,14 @@ DIVIDE_MARGIN = 2000.0
 # Emprise de depart quand aucune zone hydrographique n'est trouvee.
 DEFAULT_SEED = 5000.0
 
+# Demi-cote de l'emprise de secours en mode "petit bassin versant" : le MNT
+# telecharge couvre (2 * SMALL_BASIN_BUFFER) de large autour du point. Sans
+# chevelu BD TOPO pour la dimensionner, on ne peut que parier large sans
+# gaspiller : un kilometre suffit largement a un bassin de tete de bassin de
+# quelques dizaines d'hectares a quelques km2, sans faire telecharger un MNT
+# demesure pour un simple fosse.
+SMALL_BASIN_BUFFER = 1000.0
+
 # Garde-fou : nombre de troncons qu'on accepte de charger sans demander.
 #
 # Il porte sur ce qui est reellement lu, et non sur la taille d'une emprise.
@@ -107,6 +115,29 @@ FETCH_WORKERS = 4
 
 class NetworkError(RuntimeError):
     """Le reseau hydrographique ne permet pas de traiter cet exutoire."""
+
+
+class NoNetworkNearbyError(NetworkError):
+    """Aucun cours d'eau BD TOPO n'est accessible autour du point.
+
+    A la difference d'OversizeBasinError, ce n'est pas une question de
+    budget : il n'y a simplement rien a accrocher, ce qui coupe court avant
+    meme de savoir quelle emprise de MNT telecharger. C'est le lot frequent
+    des tout petits bassins de tete de bassin versant, la ou la BD TOPO ne
+    numerise ni fosse ni ruisseau intermittent.
+
+    L'exception porte le point et le rayon essayes : de quoi laisser
+    l'appelant proposer une emprise de secours (voir small_basin_extent)
+    plutot que d'echouer sec.
+    """
+
+    def __init__(self, x, y, snap_radius, message=None):
+        self.x = x
+        self.y = y
+        self.snap_radius = snap_radius
+        super().__init__(message or (
+            "Aucun cours d'eau BD TOPO a moins de {0:.0f} m du point."
+        ).format(snap_radius))
 
 
 class OversizeBasinError(NetworkError):
@@ -599,17 +630,11 @@ def upstream_extent(x, y, snap_radius=50.0, margin=DIVIDE_MARGIN,
             # hydrographique, emprise de depart bien dimensionnee.
             fetch(_tiles_covering(seed) - loaded)
         if not len(network):
-            raise NetworkError(
-                "Aucun troncon hydrographique autour du point."
-            )
+            raise NoNetworkNearbyError(x, y, snap_radius)
 
         found = network.nearest(x, y, snap_radius)
         if found is None:
-            raise NetworkError(
-                "Aucun cours d'eau a moins de {0:.0f} m du point. Rapprochez "
-                "l'exutoire du reseau ou augmentez le rayon "
-                "d'accrochage.".format(snap_radius)
-            )
+            raise NoNetworkNearbyError(x, y, snap_radius)
         record, distance, snapped = found
 
     iterations = 0
@@ -663,3 +688,36 @@ def upstream_extent(x, y, snap_radius=50.0, margin=DIVIDE_MARGIN,
     if truncated:
         result["truncated"] = True
     return result
+
+
+def small_basin_extent(x, y, buffer_m=SMALL_BASIN_BUFFER):
+    """Emprise de secours quand aucun cours d'eau BD TOPO n'est accessible.
+
+    C'est le lot des tout petits bassins de tete de bassin versant : la
+    BD TOPO n'y numerise souvent ni fosse ni ruisseau intermittent, si bien
+    qu'upstream_extent n'a rien ou aucun troncon a portee du rayon
+    d'accrochage (voir NoNetworkNearbyError). Sans chevelu, il n'y a plus
+    moyen de deduire l'emprise a telecharger du reseau amont : on se rabat
+    sur un simple carre autour du point clicque.
+    Cela laisse deux consequences assumees, non rattrapables ici : le
+    recalage de l'exutoire (delineation.snap_to_thalweg) ne dispose plus du
+    filtre par lineaire BD TOPO qui ecarte les petits chenaux errones, et
+    aucun controle de coherence n'est possible en aval puisqu'il n'y a pas
+    de reseau amont a comparer au bassin obtenu - exactement comme pour une
+    tete de bassin ordinaire, ou ce controle ne dit deja rien.
+
+    Renvoie un dictionnaire de meme forme qu'upstream_extent : bbox, outlet
+    (le point clicque, non recale), et upstream vide.
+    """
+    return {
+        "bbox": (x - buffer_m, y - buffer_m, x + buffer_m, y + buffer_m),
+        "outlet": (x, y),
+        "snap_distance": None,
+        "stream": None,
+        "upstream": [],
+        "zone": None,
+        "iterations": 0,
+        "dalles": 0,
+        "charges": 0,
+        "small_basin": True,
+    }
