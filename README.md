@@ -7,7 +7,7 @@
 **Cliquez un point sur un cours d'eau : le bassin versant qui l'alimente est délimité, caractérisé, cartographié et mis en rapport — sans préparer la moindre donnée.**
 
 [![QGIS](https://img.shields.io/badge/QGIS-3.40%2B-green?logo=qgis&logoColor=white)](https://qgis.org)
-[![Version](https://img.shields.io/badge/version-1.3.0-blue)](metadata.txt)
+[![Version](https://img.shields.io/badge/version-1.3.1-blue)](metadata.txt)
 [![License](https://img.shields.io/badge/license-GPL%20v3-orange)](LICENSE)
 [![Données](https://img.shields.io/badge/données-IGN%20%7C%20Sandre-informational)](https://geoservices.ign.fr)
 [![Interface](https://img.shields.io/badge/interface-FR%20%7C%20EN%20%7C%20ES%20%7C%20PT%20%7C%20DE-lightgrey)](i18n/__init__.py)
@@ -313,6 +313,7 @@ No more fetching, mosaicking and reprojecting a DEM before you can start: pick a
 - **No external dependency**: the computation relies on GRASS, shipped with QGIS. Neither TauDEM nor WhiteboxTools to install.
 - **Two-stage outlet snapping**: the clicked point is first pulled onto the BD TOPO line, then re-snapped onto the channel network derived from the terrain model. In valley bottoms the two commonly differ by tens of metres.
 - **Small-basin fallback**: when no BD TOPO watercourse is mapped near the point — common in headwater catchments, on ditches and intermittent streams — the run offers to snap the outlet on the terrain model alone, inside a fixed buffer around the point. Nothing is confirmed against a reference network in that case; it is a deliberate trade rather than a guess.
+- **Outlet stability guard**: without a reference network to confirm the basin, the run replays the snap for eight neighbouring clicks one cell-step away from the original point. If any of them tips over into a markedly different basin — a divide running a few metres from the click, easy to miss on a click alone — the run refuses rather than silently returning whichever side the click happened to land on.
 - **Consistency check**: the resulting catchment must contain the network it drains. Below 60 % of the strictly upstream length, processing stops and says why rather than returning a wrong answer.
 - **Cell size matched to the machine**: DEM resolution is derived from the memory actually free at run time — 5 m on a small catchment, 10 or 25 m over several hundred square kilometres.
 - **Background processing**, with a cancel button: the map stays navigable and progress shows in the QGIS task bar.

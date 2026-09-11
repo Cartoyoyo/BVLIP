@@ -43,6 +43,22 @@ SNAP_RADIUS = 50.0
 # l'absurde et jamais un bassin reel.
 MAX_DRAINAGE_DENSITY = 5.0
 
+# Points testes pour le controle de stabilite : les huit voisins a un pas de
+# maille, soit un disque d'environ deux mailles de diametre autour de
+# l'exutoire retenu - la precision reelle d'un clic sur la carte.
+STABILITY_OFFSETS = ((1, 0), (-1, 0), (0, 1), (0, -1),
+                      (1, 1), (1, -1), (-1, 1), (-1, -1))
+
+# Recouvrement (intersection sur union) en-deca duquel un voisin est repute
+# diverger du bassin retenu plutot que d'en etre une simple variante.
+#
+# Mesure sur un cas reel ou l'exutoire tombait a quelques metres d'une ligne
+# de partage franche (une mare et le vallon qu'elle masquait) : huit voisins
+# sur neuf rendaient un bassin de 2,7 a 3,0 ha, le neuvieme 49,7 ha - une
+# intersection quasi nulle. 0.5 laisse passer le glissement normal d'un
+# vallon etroit tout en attrapant ce genre de bascule.
+STABILITY_MIN_IOU = 0.5
+
 # Rayon maximal de recherche du talweg, en metres.
 #
 # Le rayon nominal double tant qu'aucun chenal recevable n'est a portee. Il
@@ -517,6 +533,45 @@ def delineate(dem_info, outlet, workdir, threshold=STREAM_THRESHOLD,
                    candidate["accumulation"],
                    candidate["accumulation"] * cell_area / 1e6))
 
+    def stability_check(geometry, click_x, click_y, min_drained_cells):
+        """Le bassin retenu tient-il face a un leger deplacement du clic ?
+
+        Sans reseau amont connu, rien d'autre ne dit si l'exutoire est tombe
+        pres d'une ligne de partage des eaux : deux clics separes de
+        quelques metres peuvent se recaler sur des bassins entierement
+        differents. On rejoue donc le recalage complet (pas seulement
+        l'extraction) pour huit clics voisins, a un pas de maille autour du
+        point clique d'origine - et non du point deja recale, qui a deja
+        tranche l'ambiguite en se figeant d'un cote de la ligne de partage.
+        Chaque candidat est compare au resultat retenu par intersection sur
+        union - moins sensible qu'un simple rapport de surfaces, que deux
+        bassins de meme taille mais disjoints tromperait.
+
+        Renvoie le plus mauvais recouvrement observe (1.0 si tous les
+        voisins rendent essentiellement le meme bassin) et, quand il tombe
+        sous STABILITY_MIN_IOU, la surface du voisin qui diverge.
+        """
+        base_area = geometry.area()
+        worst_iou = 1.0
+        worst_area = None
+        for index, (dcol, drow) in enumerate(STABILITY_OFFSETS):
+            nearby = snap_to_thalweg(
+                streams, accumulation,
+                click_x + dcol * cellsize, click_y + drow * cellsize,
+                snap_radius, min_drained_cells,
+            )
+            neighbour, _refusal = extract(nearby, "_stab{0}".format(index))
+            if neighbour is None:
+                continue
+            other = neighbour[0]
+            intersection = geometry.intersection(other).area()
+            union = base_area + other.area() - intersection
+            iou = intersection / union if union > 0 else 0.0
+            if iou < worst_iou:
+                worst_iou = iou
+                worst_area = other.area()
+        return worst_iou, worst_area
+
     # Surface minimale plausible, deduite du lineaire deja carte : elle
     # ecarte les chenaux trop petits pour etre celui qu'on a designe.
     minimum = minimum_drained_area(upstream_km) / cell_area
@@ -572,6 +627,23 @@ def delineate(dem_info, outlet, workdir, threshold=STREAM_THRESHOLD,
     score = snapped["accumulation"]
     area = geometry.area()
 
+    # Sans reseau amont, le controle de contenance ne peut rien dire (voir
+    # network_containment) : c'est le seul autre signal qu'un exutoire tombe
+    # pres d'une ligne de partage des eaux plutot que sur le bon talweg.
+    stability = 1.0
+    if not upstream:
+        report("Controle de stabilite : huit exutoires voisins...")
+        stability, unstable_area = stability_check(
+            geometry, outlet[0], outlet[1], minimum)
+        if stability < STABILITY_MIN_IOU:
+            raise DelineationError(
+                "Exutoire instable : un deplacement d'une seule maille "
+                "suffit a faire basculer le bassin de {0:.2f} ha vers un "
+                "autre de {1:.2f} ha (recouvrement {2:.0f} %). Le point est "
+                "probablement pose pres d'une ligne de partage des eaux. "
+                "Deplacez-le, meme de quelques metres.".format(
+                    area / 1e4, unstable_area / 1e4, 100 * stability))
+
     raw_perimeter = geometry.length()
     if simplify_cells and simplify_cells > 0:
         tolerance = simplify_cells * cellsize
@@ -594,6 +666,7 @@ def delineate(dem_info, outlet, workdir, threshold=STREAM_THRESHOLD,
         "outlet": (x, y),
         "snap_shift": snapped["shift"],
         "snap_origin": snapped["origine"],
+        "stabilite": stability,
         "accumulation_cells": score,
         "area": area,
         "perimeter": geometry.length(),
