@@ -100,6 +100,10 @@ def habillage_keys():
             # (cle interne, cles de couches, cle de traduction du libelle)
             for element in node.value.elts:
                 keys.add(element.elts[2].value)
+        elif isinstance(target, ast.Name) and target.id == "PALETTES":
+            # (nom du nuancier matplotlib, cle de traduction du libelle)
+            for element in node.value.elts:
+                keys.add(element.elts[1].value)
     return keys
 
 

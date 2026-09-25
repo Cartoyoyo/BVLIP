@@ -146,6 +146,36 @@ def legend_items(layer):
     return items
 
 
+ORTHO_LAYER = "ORTHOIMAGERY.ORTHOPHOTOS"
+ORTHO_CAPABILITIES = (
+    "https://data.geopf.fr/wmts"
+    "?SERVICE=WMTS&VERSION=1.0.0&REQUEST=GetCapabilities"
+)
+
+
+def fetch_ortho_layer():
+    """Orthophotographie IGN (BD ORTHO), en couche WMTS de la Geoplateforme.
+
+    WMTS plutot que WMS, comme le fond Plan IGN du rapport (report/layout) :
+    c'est le mode d'acces officiel du service, et celui qui passe sur les
+    postes au reseau filtre. Rien n'est telecharge ici - les tuiles le sont
+    au rendu, sur la seule emprise du relief (render_layer_texture), et la
+    reprojection du Web Mercator vers le Lambert 93 est faite par QGIS.
+
+    Renvoie None si la couche n'a pas pu s'ouvrir (service injoignable).
+    """
+    import urllib.parse
+
+    from qgis.core import QgsRasterLayer
+
+    uri = (
+        "contextualWMSLegend=0&crs=EPSG:3857&dpiMode=7&format=image/jpeg"
+        "&layers={0}&styles=normal&tileMatrixSet=PM&url={1}"
+    ).format(ORTHO_LAYER, urllib.parse.quote(ORTHO_CAPABILITIES, safe=""))
+    layer = QgsRasterLayer(uri, "Orthophoto IGN (habillage)", "wms")
+    return layer if layer.isValid() else None
+
+
 def _clc_field(name):
     if _MODERN_FIELDS:
         return QgsField(name, S, "", 3, 0)

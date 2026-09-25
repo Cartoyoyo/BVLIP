@@ -521,6 +521,23 @@ class BvlipDock(QDockWidget):
                 box.blockSignals(False)
         self._save_options()
 
+    @staticmethod
+    def _basemap_crs(project):
+        """SCR a garder au projet apres l'ajout du fond de plan.
+
+        Projet vierge (aucune couche) : Lambert 93, celui dans lequel le
+        bassin est calcule. Son SCR "valide" n'y a encore rien d'un choix -
+        c'est le defaut des reglages de QGIS, souvent WGS 84, et le garder
+        faisait sortir les cartes du rapport en blanc. Projet deja garni : son
+        SCR a ete choisi, on le respecte, sauf s'il n'y en a aucun.
+        """
+        from ..core.results import CRS
+
+        crs = project.crs()
+        if not project.mapLayers() or not crs.isValid():
+            return CRS
+        return crs
+
     def _add_opentopomap(self):
         """Ajoute le fond de plan OpenTopoMap au projet, en couche XYZ.
 
@@ -529,8 +546,6 @@ class BvlipDock(QDockWidget):
         gestionnaire de connexions XYZ de QGIS.
         """
         from qgis.core import QgsProject, QgsRasterLayer
-
-        from ..core.results import CRS
 
         name = "OpenTopoMap"
         project = QgsProject.instance()
@@ -551,16 +566,18 @@ class BvlipDock(QDockWidget):
         # CRS n'a encore jamais ete choisi, QGIS adopte la projection de la
         # premiere couche ajoutee, le canevas bascule en EPSG:3857, et le
         # cadrage sur le bassin en fin de calcul (toujours produit en
-        # Lambert 93) atterrit hors champ. Le CRS d'avant l'ajout est donc
-        # garde : s'il etait deja valide - Lambert 93 ou un autre, choisi par
-        # le projet lui-meme - on le restaure tel quel apres coup ; s'il n'y
-        # en avait pas encore, 2154 devient le choix par defaut.
-        crs_before = project.crs()
+        # Lambert 93) atterrit hors champ. Le CRS est donc fixe apres
+        # l'ajout, voir _basemap_crs.
+        #
+        # Deux fois : tout de suite, et une fois la main rendue a Qt. Avec le
+        # reglage "SCR de la premiere couche ajoutee" (defaut de QGIS sur un
+        # projet vierge), c'est le pont couches/canevas qui l'applique, en
+        # differe - apres notre setCrs, qu'il ecrasait par le 3857 de la
+        # tuile. Le second passage vient apres lui.
+        crs = self._basemap_crs(project)
         project.addMapLayer(layer)
-        if crs_before.isValid():
-            project.setCrs(crs_before)
-        else:
-            project.setCrs(CRS)
+        project.setCrs(crs)
+        QTimer.singleShot(100, lambda: project.setCrs(crs))
         self._status(tr("opentopomap_added", self.lang))
         self.log(tr("opentopomap_added", self.lang))
 

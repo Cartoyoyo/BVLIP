@@ -200,6 +200,11 @@ def build_layout(project, layers, values, charts_paths, title=None,
     project.addMapLayers(temporary, False)
     map_item.setLayers(stack)
     map_item.setKeepLayerSet(True)
+    # Le SCR de la carte est celui du bassin, pas celui du projet : l'emprise
+    # posee plus bas est en Lambert 93, et sur un projet en WGS 84 ou en Web
+    # Mercator (projet vierge, fond de plan ajoute en premier) elle visait
+    # un coin du monde vide - cartes blanches dans tout le rapport.
+    map_item.setCrs(basin.crs())
 
     layout.addLayoutItem(map_item)
 
@@ -748,6 +753,7 @@ def _section_map(cursor, context, thematic, legend_title, support=()):
         pile.append(context["basemap"])
     carte.setLayers(pile)
     carte.setKeepLayerSet(True)
+    carte.setCrs(context["basin"].crs())    # voir build_layout
     cursor.layout.addLayoutItem(carte)
 
     extent = context["basin"].extent()

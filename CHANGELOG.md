@@ -3,6 +3,69 @@
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le
 plugin la [gestion sémantique de version](https://semver.org/lang/fr/).
 
+## [1.3.2] - 2026-09-25
+
+### Ajouté
+
+- **Vue 3D : export en page HTML autonome.** Un seul fichier, sans QGIS ni
+  connexion, qui s'ouvre dans n'importe quel navigateur. On y tourne le
+  bassin à la souris (ou au doigt), on le déplace, on zoome et on règle
+  l'exagération. La page reprend la légende des habillages actifs et
+  affiche une boussole. Elle est écrite en WebGL 1, pour s'ouvrir aussi dans
+  le moteur web de QGIS.
+- **Vue 3D en WebGL.** La fenêtre 3D affiche désormais la page de l'export
+  HTML : rotation fluide, relief à pleine définition, texture fine. Les
+  points de vue, le zoom et l'exagération du panneau la pilotent.
+  L'habillage la recharge en gardant la position de la caméra. « Exporter l'image » capture la vue affichée. Sous QGIS 3 (Qt5),
+  elle passe par QtWebKit, avec un contexte OpenGL de compatibilité pendant
+  le chargement de la page. L'aperçu matplotlib ne sert plus que de secours
+  sans moteur web, et c'est le seul cas où le réglage « Définition » est
+  proposé.
+- **Vue 3D : habillage « Orthophoto (IGN) »**, en WMTS Géoplateforme, rangé
+  juste au-dessus du relief en niveaux de gris.
+- **Vue 3D : valeurs en un clic** sous les curseurs : opacité 90 / 75 / 50 %
+  et exagération ×1,5 / ×2 / ×2,5 / ×5.
+- **Export HTML : proposition d'ouvrir la page** dans le navigateur une fois
+  enregistrée.
+- **Export HTML interactif.** La page reprend les réglages de la fenêtre 3D
+  dans un panneau latéral : points de vue et zoom, habillages à cocher,
+  réordonner et régler en opacité (curseur et 90 / 75 / 50 %), exagération
+  en un clic, légende qui suit les habillages actifs. On peut aussi y cocher
+  le chevelu, la ligne de partage des eaux et l'exutoire, et enregistrer la
+  vue en PNG. Chaque habillage est embarqué à part, avec l'ombrage du
+  relief, et la page les recompose elle-même. Tous les habillages
+  disponibles partent dans la page, cochés ou non : l'export télécharge donc
+  Corine et l'orthophoto s'ils ne l'ont pas encore été.
+- **Vue 3D : zoom à la molette**, en plus des boutons.
+- **Vue 3D : bassin cadré en entier à l'ouverture**, et à chaque point de
+  vue (NO, NE, SO, SE, Dessus) ou « Vue initiale », quelle que soit la
+  taille de la fenêtre.
+
+### Modifié
+
+- **Rotation plus fluide.** Pendant un cliquer-glisser, une surface deux fois
+  plus légère remplace la surface choisie, qui revient au relâchement. Les curseurs ne
+  redessinent plus qu'au relâchement. La définition démarre à 2/5 au lieu
+  de 1/5.
+- **Export .glb plus fidèle.** La texture est environ 2 000 px de côté au lieu
+  de la taille de la grille (400 px au plus). Le chevelu, l'exutoire et la
+  ligne de crête y sont peints. Les normales sont lissées, et l'origine
+  Lambert 93 et l'exagération sont enregistrées dans les propriétés du
+  modèle.
+
+### Corrigé
+
+- Cartes blanches dans tout le rapport (page 1 et cartes en tête de chaque
+  catégorie) quand le projet QGIS n'était pas en Lambert 93 - projet vierge
+  ou fond de plan ajouté en premier, en Web Mercator. Les cartes prennent
+  désormais le SCR du bassin, quel que soit celui du projet.
+- Fond de plan OpenTopoMap sur un projet vierge : le projet passe en
+  Lambert 93 (EPSG:2154) au lieu de garder le SCR par défaut des réglages
+  de QGIS (souvent WGS 84). Un projet qui contient déjà des couches garde
+  son SCR.
+- Le chevelu disparaissait souvent derrière le relief dans la vue 3D et dans
+  le bloc-diagramme du rapport, à cause du tri en profondeur de matplotlib.
+
 ## [1.2.1] - 2026-09-09
 
 ### Modifié
