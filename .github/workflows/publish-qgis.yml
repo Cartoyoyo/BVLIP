@@ -11,7 +11,9 @@ on:
 
 jobs:
   publish:
-    runs-on: ubuntu-latest
+    # Fige plutot que ubuntu-latest, qui bascule sur Ubuntu 26 le 19/10/2026 :
+    # une publication ne doit pas changer d'environnement sans qu'on le decide.
+    runs-on: ubuntu-24.04
     steps:
       # v7 : actions sous Node.js 24 (Node 20 est deprecie sur les runners).
       - uses: actions/checkout@v7
