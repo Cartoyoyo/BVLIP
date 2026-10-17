@@ -125,9 +125,18 @@ def culture_labels(timeout=60):
         table = {}
         for feature in wfs_features(LAYER_CODES, timeout=timeout):
             properties = feature.get("properties") or {}
-            code = properties.get("code")
+            # Le service a renomme ses champs (code_culture, libelle_culture) :
+            # les anciens noms restent lus, faute de quoi la table revenait
+            # vide sans erreur et chaque code s'affichait brut.
+            code = properties.get("code_culture") or properties.get("code")
             if code:
-                table[str(code)] = properties.get("libelle") or str(code)
+                table[str(code).strip()] = (
+                    properties.get("libelle_culture")
+                    or properties.get("libelle") or str(code))
+        # Une table vide n'est pas mise en cache : elle trahit un service
+        # injoignable ou un nouveau renommage, et le bassin suivant reessaie.
+        if not table:
+            return {}
         _CODES = table
     return _CODES
 
@@ -232,6 +241,10 @@ def declared_parcels(basin, progress=None, timeout=120):
             properties = feature["properties"]
             culture = str(properties.get("code_cultu") or "").strip()
             categorie = str(properties.get("cat_cult_p") or "").strip()
+            # Vide et "NA" portent le meme intitule : un seul cumul, sans quoi
+            # la ligne "Categorie non renseignee" paraissait deux fois.
+            if categorie not in dict(CATEGORIES):
+                categorie = ""
             par_culture[culture] = par_culture.get(culture, 0.0) + area
             par_categorie[categorie] = par_categorie.get(categorie, 0.0) + area
             est_herbe = _is_grass(labels.get(culture), categorie)

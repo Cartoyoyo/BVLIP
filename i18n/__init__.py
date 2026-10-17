@@ -1796,11 +1796,6 @@ TR = {
         "es": "Versión {version}", "pt": "Versão {version}",
         "de": "Version {version}",
     },
-    "report_bug": {
-        "fr": "Signaler un bug", "en": "Report a bug",
-        "es": "Informar de un error", "pt": "Reportar um erro",
-        "de": "Fehler melden",
-    },
     "close": {
         "fr": "Fermer", "en": "Close", "es": "Cerrar",
         "pt": "Fechar", "de": "Schließen",
@@ -1811,7 +1806,7 @@ TR = {
               "explicitement. Ces deux plafonds sont ceux que le plugin se "
               "fixe pour tenir en mémoire, non des limites de la "
               "Géoplateforme. Au-delà, BVLIP refuse plutôt que de rendre un "
-              "bassin coupe au bord de l'emprise.",
+              "bassin coupé au bord de l'emprise.",
         "en": "Catchment size: delineation loads up to {guard} network "
               "reaches, and up to {hard} if you explicitly ask. Both "
               "ceilings are the plugin's own, set to stay within memory, not "
@@ -1834,12 +1829,102 @@ TR = {
               "lehnt BVLIP ab, statt ein am Rand abgeschnittenes Gebiet zu "
               "liefern.",
     },
-    "data_credit": {
-        "fr": "Données : RGE ALTI, BD TOPO, BD TOPAGE — IGN / Sandre / Hub'Eau",
-        "en": "Data: RGE ALTI, BD TOPO, BD TOPAGE — IGN / Sandre / Hub'Eau",
-        "es": "Datos: RGE ALTI, BD TOPO, BD TOPAGE — IGN / Sandre / Hub'Eau",
-        "pt": "Dados: RGE ALTI, BD TOPO, BD TOPAGE — IGN / Sandre / Hub'Eau",
-        "de": "Daten: RGE ALTI, BD TOPO, BD TOPAGE — IGN / Sandre / Hub'Eau",
+    "about_description": {
+        "fr": "Cliquez un point sur un cours d'eau : BVLIP délimite le bassin "
+              "versant qui l'alimente, le caractérise et le met en rapport, "
+              "sans préparer la moindre donnée. Le relief (RGE ALTI) et le "
+              "réseau hydrographique (BD TOPO) sont téléchargés à la volée "
+              "depuis la Géoplateforme IGN.<br><br>"
+              "Le bassin est ensuite décrit : forme, relief, hydrographie, "
+              "occupation du sol, agriculture déclarée à la PAC, zonages "
+              "environnementaux, masses d'eau, obstacles à l'écoulement, "
+              "stations d'épuration et prélèvements (IGN, Sandre, INPN, "
+              "Hub'Eau). Le tout aboutit à un rapport PDF, un classeur Excel "
+              "et une vue 3D interactive du relief.",
+        "en": "Click a point on a stream: BVLIP delineates the catchment that "
+              "feeds it, characterises it and writes the report, with no data "
+              "to prepare. Terrain (RGE ALTI) and the river network (BD TOPO) "
+              "are downloaded on the fly from the IGN Géoplateforme.<br><br>"
+              "The catchment is then described: shape, relief, hydrography, "
+              "land cover, farmland declared under the CAP, environmental "
+              "zonings, water bodies, flow obstacles, wastewater plants and "
+              "water abstractions (IGN, Sandre, INPN, Hub'Eau). The result is "
+              "a PDF report, an Excel workbook and an interactive 3D view of "
+              "the terrain.",
+        "es": "Haga clic en un punto de un cauce: BVLIP delimita la cuenca "
+              "que lo alimenta, la caracteriza y redacta el informe, sin "
+              "preparar ningún dato. El relieve (RGE ALTI) y la red "
+              "hidrográfica (BD TOPO) se descargan al vuelo desde la "
+              "Géoplateforme del IGN.<br><br>"
+              "La cuenca se describe después: forma, relieve, hidrografía, "
+              "ocupación del suelo, superficie agrícola declarada a la PAC, "
+              "zonificaciones ambientales, masas de agua, obstáculos al "
+              "flujo, depuradoras y captaciones (IGN, Sandre, INPN, Hub'Eau). "
+              "El resultado es un informe PDF, un libro Excel y una vista 3D "
+              "interactiva del relieve.",
+        "pt": "Clique num ponto de um curso de água: o BVLIP delimita a bacia "
+              "que o alimenta, caracteriza-a e redige o relatório, sem "
+              "preparar qualquer dado. O relevo (RGE ALTI) e a rede "
+              "hidrográfica (BD TOPO) são descarregados na hora a partir da "
+              "Géoplateforme do IGN.<br><br>"
+              "A bacia é depois descrita: forma, relevo, hidrografia, "
+              "ocupação do solo, superfície agrícola declarada à PAC, "
+              "zonamentos ambientais, massas de água, obstáculos ao "
+              "escoamento, ETAR e captações (IGN, Sandre, INPN, Hub'Eau). O "
+              "resultado é um relatório PDF, um livro Excel e uma vista 3D "
+              "interativa do relevo.",
+        "de": "Klicken Sie auf einen Punkt an einem Gewässer: BVLIP grenzt das "
+              "zugehörige Einzugsgebiet ab, beschreibt es und erstellt den "
+              "Bericht, ohne dass Daten vorbereitet werden müssen. Gelände "
+              "(RGE ALTI) und Gewässernetz (BD TOPO) werden direkt von der "
+              "IGN-Géoplateforme geladen.<br><br>"
+              "Danach wird das Gebiet beschrieben: Form, Relief, Hydrographie, "
+              "Landbedeckung, im Rahmen der GAP gemeldete Agrarflächen, "
+              "Schutzgebiete, Wasserkörper, Abflusshindernisse, Kläranlagen "
+              "und Wasserentnahmen (IGN, Sandre, INPN, Hub'Eau). Ergebnis "
+              "sind ein PDF-Bericht, eine Excel-Arbeitsmappe und eine "
+              "interaktive 3D-Ansicht des Geländes.",
+    },
+    "about_warning_title": {
+        "fr": "Avertissement", "en": "Disclaimer", "es": "Advertencia",
+        "pt": "Aviso", "de": "Hinweis",
+    },
+    "about_warning": {
+        "fr": "Les résultats produits par BVLIP (délimitation, mesures, "
+              "surfaces, rapports) sont fournis à titre indicatif. Ils "
+              "reposent sur des services publics interrogés à la volée, dont "
+              "le contenu évolue, et doivent être vérifiés par l'utilisateur, "
+              "par ses propres moyens. Ils ne se substituent pas à une étude "
+              "complète menée par un professionnel qualifié. L'auteur ne peut "
+              "être tenu responsable de l'usage qui en est fait.",
+        "en": "The results produced by BVLIP (delineation, measurements, "
+              "areas, reports) are provided for information only. They rely "
+              "on public services queried on the fly, whose content changes, "
+              "and must be checked by the user, by their own means. They do "
+              "not replace a complete study carried out by a qualified "
+              "professional. The author cannot be held liable for the use "
+              "made of them.",
+        "es": "Los resultados producidos por BVLIP (delimitación, mediciones, "
+              "superficies, informes) se facilitan a título indicativo. Se "
+              "basan en servicios públicos consultados al vuelo, cuyo "
+              "contenido cambia, y deben ser verificados por el usuario, por "
+              "sus propios medios. No sustituyen un estudio completo "
+              "realizado por un profesional cualificado. El autor no se hace "
+              "responsable del uso que se haga de ellos.",
+        "pt": "Os resultados produzidos pelo BVLIP (delimitação, medições, "
+              "áreas, relatórios) são fornecidos a título indicativo. Baseiam-"
+              "se em serviços públicos consultados na hora, cujo conteúdo "
+              "muda, e devem ser verificados pelo utilizador, pelos seus "
+              "próprios meios. Não substituem um estudo completo realizado "
+              "por um profissional qualificado. O autor não pode ser "
+              "responsabilizado pela utilização que deles seja feita.",
+        "de": "Die von BVLIP erzeugten Ergebnisse (Abgrenzung, Messwerte, "
+              "Flächen, Berichte) dienen nur zur Information. Sie beruhen auf "
+              "öffentlichen Diensten, die direkt abgefragt werden und sich "
+              "ändern, und müssen vom Nutzer mit eigenen Mitteln geprüft "
+              "werden. Sie ersetzen keine vollständige Untersuchung durch "
+              "eine qualifizierte Fachkraft. Der Autor haftet nicht für ihre "
+              "Verwendung.",
     },
 }
 

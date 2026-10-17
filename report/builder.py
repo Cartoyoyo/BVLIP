@@ -168,5 +168,6 @@ def build_report(result, layers, pdf_path, with_workbook=True, progress=None):
                 steu=result.get("steu"),
                 population=result.get("population"),
                 prelevements=result.get("prelevements"),
+                agriculture=result.get("agriculture"),
             )
         return produced

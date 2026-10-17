@@ -15,13 +15,13 @@ import os
 from qgis.core import (
     QgsCoordinateTransform, QgsCoordinateReferenceSystem, QgsFeature,
     QgsFeatureSink, QgsField, QgsFields, QgsGeometry, QgsPointXY,
-    QgsProcessing, QgsProcessingAlgorithm, QgsProcessingException,
+    QgsProcessingAlgorithm, QgsProcessingException,
     QgsProcessingParameterBoolean, QgsProcessingParameterEnum,
     QgsProcessingParameterFeatureSink,
     QgsProcessingParameterFeatureSource, QgsProcessingParameterNumber,
-    QgsProject, QgsWkbTypes,
+    Qgis, QgsProject,
 )
-from qgis.PyQt.QtCore import QCoreApplication, QVariant
+from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 
 from ..core import datasets as catalogue
@@ -124,37 +124,37 @@ class DelineateWatershedAlgorithm(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):  # noqa: N802
         self.addParameter(QgsProcessingParameterFeatureSource(
             self.INPUT, self.tr("Exutoires (points)"),
-            [QgsProcessing.TypeVectorPoint],
+            [Qgis.ProcessingSourceType.VectorPoint],
         ))
         self.addParameter(QgsProcessingParameterNumber(
             self.SNAP_RADIUS,
             self.tr("Rayon d'accrochage au reseau BD TOPO (m)"),
-            QgsProcessingParameterNumber.Type.Double, defaultValue=50.0,
+            Qgis.ProcessingNumberParameterType.Double, defaultValue=50.0,
             minValue=0.0, maxValue=1000.0,
         ))
         self.addParameter(QgsProcessingParameterNumber(
             self.THALWEG_RADIUS,
             self.tr("Rayon de recalage sur le chevelu du MNT (m)"),
-            QgsProcessingParameterNumber.Type.Double, defaultValue=50.0,
+            Qgis.ProcessingNumberParameterType.Double, defaultValue=50.0,
             minValue=0.0, maxValue=500.0,
         ))
         self.addParameter(QgsProcessingParameterNumber(
             self.RESOLUTION,
             self.tr("Resolution du MNT en metres (0 pour l'ajuster "
                     "automatiquement)"),
-            QgsProcessingParameterNumber.Type.Double, defaultValue=0.0,
+            Qgis.ProcessingNumberParameterType.Double, defaultValue=0.0,
             minValue=0.0, maxValue=100.0,
         ))
         self.addParameter(QgsProcessingParameterNumber(
             self.SIMPLIFY_CELLS,
             self.tr("Simplification du contour (mailles)"),
-            QgsProcessingParameterNumber.Type.Double, defaultValue=2.0,
+            Qgis.ProcessingNumberParameterType.Double, defaultValue=2.0,
             minValue=0.0, maxValue=10.0,
         ))
         self.addParameter(QgsProcessingParameterNumber(
             self.THRESHOLD,
             self.tr("Seuil d'ouverture des ecoulements (mailles)"),
-            QgsProcessingParameterNumber.Type.Integer, defaultValue=200,
+            Qgis.ProcessingNumberParameterType.Integer, defaultValue=200,
             minValue=10, maxValue=100000,
         ))
         # Une seule liste a choix multiple plutot que vingt-deux cases :
@@ -183,11 +183,11 @@ class DelineateWatershedAlgorithm(QgsProcessingAlgorithm):
         ))
         self.addParameter(QgsProcessingParameterFeatureSink(
             self.OUTPUT, self.tr("Bassins versants"),
-            QgsProcessing.TypeVectorPolygon,
+            Qgis.ProcessingSourceType.VectorPolygon,
         ))
         self.addParameter(QgsProcessingParameterFeatureSink(
             self.OUTPUT_OUTLETS, self.tr("Exutoires"),
-            QgsProcessing.TypeVectorPoint, optional=True,
+            Qgis.ProcessingSourceType.VectorPoint, optional=True,
         ))
 
     # -------------------------------------------------------------- Execution
@@ -223,11 +223,11 @@ class DelineateWatershedAlgorithm(QgsProcessingAlgorithm):
         outlet_fields = _fields(results.OUTLET_FIELDS)
         sink, sink_id = self.parameterAsSink(
             parameters, self.OUTPUT, context, basin_fields,
-            QgsWkbTypes.Type.Polygon, LAMBERT93,
+            Qgis.WkbType.Polygon, LAMBERT93,
         )
         outlet_sink, outlet_id = self.parameterAsSink(
             parameters, self.OUTPUT_OUTLETS, context, outlet_fields,
-            QgsWkbTypes.Type.Point, LAMBERT93,
+            Qgis.WkbType.Point, LAMBERT93,
         )
 
         transform = None

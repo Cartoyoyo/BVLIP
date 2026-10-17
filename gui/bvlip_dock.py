@@ -869,7 +869,7 @@ class BvlipDock(QDockWidget):
         back = box.addButton(tr("oversize_back", self.lang),
                              QMessageBox.ButtonRole.RejectRole)
         box.setDefaultButton(back)
-        box.exec_()
+        box.exec()
 
         if box.clickedButton() is go:
             self._allow_oversize = True
@@ -910,7 +910,7 @@ class BvlipDock(QDockWidget):
         back = box.addButton(tr("small_basin_back", self.lang),
                              QMessageBox.ButtonRole.RejectRole)
         box.setDefaultButton(back)
-        box.exec_()
+        box.exec()
 
         if box.clickedButton() is go:
             self._allow_small_basin = True
@@ -986,7 +986,7 @@ class BvlipDock(QDockWidget):
         try:
             View3dDialog(
                 relief, self.lang, self, layers=self.last_layers
-            ).exec_()
+            ).exec()
         except Exception as exc:
             self.log(tr("done_error", self.lang, error=exc))
             self._status(tr("done_error", self.lang, error=exc))

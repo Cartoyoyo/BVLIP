@@ -23,18 +23,26 @@ from qgis.core import (
     QgsLayoutItemLabel, QgsLayoutItemMap, QgsLayoutItemPicture,
     QgsLayoutItemScaleBar, QgsLayoutMeasurement, QgsLayoutPoint,
     QgsLayoutSize, QgsPrintLayout, QgsTextFormat,
-    QgsProject, QgsRasterLayer, QgsUnitTypes,
+    QgsProject, QgsRasterLayer, Qgis,
 )
 from qgis.PyQt.QtCore import QRectF
 from qgis.PyQt.QtGui import QColor, QFont
 
-MM = QgsUnitTypes.LayoutMillimeters
+MM = Qgis.LayoutUnit.Millimeters
 A4_WIDTH = 210.0
 A4_HEIGHT = 297.0
 MARGIN = 12.0
 
 ARDOISE = QColor(44, 62, 80)
 GRIS = QColor(127, 140, 141)
+ROUGE = QColor(176, 58, 46)
+
+# Avertissement d'usage, repris de CanaPlan, en bas de chaque page. Les
+# chiffres viennent de services publics interroges a la volee : un millesime
+# change, un champ se renomme, et rien ne le signale sur la page.
+AVERTISSEMENT = ("Document indicatif — données issues de services publics, "
+                 "à vérifier par vos propres moyens ; ne se substitue pas à "
+                 "une étude complète.")
 
 # Fond de plan par defaut : le Plan IGN v2, seule carte topographique servie
 # librement par la Geoplateforme. Le SCAN 25 n'est pas en acces libre ; les
@@ -72,7 +80,7 @@ def _text_format(size, bold=False, color=ARDOISE):
     text_format = QgsTextFormat()
     text_format.setFont(font)
     text_format.setSize(size)
-    text_format.setSizeUnit(QgsUnitTypes.RenderPoints)
+    text_format.setSizeUnit(Qgis.RenderUnit.Points)
     text_format.setColor(color)
     return text_format
 
@@ -265,8 +273,17 @@ def build_layout(project, layers, values, charts_paths, title=None,
     _build_sources_page(layout, title)
     if detail_pages:
         _details_footers(layout, detail_pages)
+    _warning_footers(layout)
 
     return layout, temporary
+
+
+def _warning_footers(layout):
+    """L'avertissement d'usage, sous le pied de page de chaque page."""
+    for page in range(layout.pageCollection().pageCount()):
+        _label(layout, AVERTISSEMENT, MARGIN, A4_HEIGHT - 7.5,
+               A4_WIDTH - 2 * MARGIN, 4, size=6.5, bold=True, color=ROUGE,
+               page=page)
 
 
 # ------------------------------------------------ Seconde page : le detail
@@ -343,8 +360,11 @@ def _wrapped_lines(text, width, size=CELL_SIZE, bold=False):
         # ramenees au meme repere : le rapport texte/colonne ne depend alors
         # plus de la resolution du poste.
         box = QRectF(0.0, 0.0, width * MEASURE_SCALE * dpi / 25.4, 100000.0)
+        # PyQt6 range les drapeaux dans des enum.Flag, que int() refuse :
+        # leur valeur passe par .value, celle de PyQt5 par int().
+        flag = Qt.TextFlag.TextWordWrap
         wrapped = metrics.boundingRect(
-            box, int(Qt.TextFlag.TextWordWrap), text)
+            box, getattr(flag, "value", None) or int(flag), text)
         spacing = metrics.lineSpacing() or 1.0
         return max(1, int(round(wrapped.height() / spacing)))
     except Exception:      # pragma: no cover - poste sans police disponible
@@ -809,15 +829,15 @@ def _layer_legend(layout, map_item, layer, project, title, x, y, width,
     node = root.addLayer(layer)
     node.setName("")
 
-    legend.setStyleFont(QgsLegendStyle.Style.Title,
+    legend.setStyleFont(Qgis.LegendComponent.Title,
                         QFont("Arial", int(title_size), 75))
-    legend.setStyleFont(QgsLegendStyle.Style.SymbolLabel,
+    legend.setStyleFont(Qgis.LegendComponent.SymbolLabel,
                         QFont("Arial", int(label_size)))
     legend.setSymbolWidth(3.6)
     legend.setSymbolHeight(2.2)
-    legend.rstyle(QgsLegendStyle.Style.Title).setMargin(
+    legend.rstyle(Qgis.LegendComponent.Title).setMargin(
         QgsLegendStyle.Side.Bottom, 1.2)
-    legend.rstyle(QgsLegendStyle.Style.Symbol).setMargin(
+    legend.rstyle(Qgis.LegendComponent.Symbol).setMargin(
         QgsLegendStyle.Side.Top, 0.4)
     # Les intitules de formation et de culture sont longs : sans repli, la
     # legende s'etale au-dela de la page.
@@ -885,13 +905,13 @@ def _zonage_legend(layout, map_item, zonages, project):
     node = root.addLayer(zonages)
     node.setName("")
 
-    legend.setStyleFont(QgsLegendStyle.Style.Title, QFont("Arial", 7, 75))
-    legend.setStyleFont(QgsLegendStyle.Style.SymbolLabel, QFont("Arial", 6))
+    legend.setStyleFont(Qgis.LegendComponent.Title, QFont("Arial", 7, QFont.Weight.Bold))
+    legend.setStyleFont(Qgis.LegendComponent.SymbolLabel, QFont("Arial", 6))
     legend.setSymbolWidth(4.0)
     legend.setSymbolHeight(2.4)
-    legend.rstyle(QgsLegendStyle.Style.Title).setMargin(
+    legend.rstyle(Qgis.LegendComponent.Title).setMargin(
         QgsLegendStyle.Side.Bottom, 1.2)
-    legend.rstyle(QgsLegendStyle.Style.Symbol).setMargin(
+    legend.rstyle(Qgis.LegendComponent.Symbol).setMargin(
         QgsLegendStyle.Side.Top, 0.4)
 
     legend.setBackgroundEnabled(True)
@@ -1837,7 +1857,7 @@ def print_preview(layout, title, parent=None, dpi=200,
     if on_export is not None:
         _add_export_button(dialog, export_label or "PDF", on_export)
     _fit_to_screen(dialog, parent)
-    return dialog.exec_()
+    return dialog.exec()
 
 
 # Taille souhaitee pour l'apercu : une page A4 entiere s'y lit sans zoomer.

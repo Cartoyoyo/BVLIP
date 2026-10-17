@@ -54,7 +54,8 @@ class OutletMapTool(QgsMapTool):
         self._marker = None
 
     def canvasReleaseEvent(self, event):  # noqa: N802 (API Qt)
-        point = self.toMapCoordinates(event.pos())
+        # mapPoint plutot que pos() : QMouseEvent.pos() n'existe plus en Qt6.
+        point = event.mapPoint()
         transformed = self._to_lambert93(point)
         if transformed is None:
             return

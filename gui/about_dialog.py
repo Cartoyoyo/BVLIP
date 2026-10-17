@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
-"""Dialogue "A propos" de BVLIP.
+"""Dialogue "A propos" de BVLIP, sur le modele de CanaPlan.
+
+De haut en bas : bandeau, badges, presentation, avertissement d'usage,
+auteur et lien vers le changelog, badges GitHub et LinkedIn, bouton Fermer.
+Le bandeau et les badges sont des images de icons/about, produites par le
+generateur commun a mes plugins (qgis_about_assets.py).
 
 Les metadonnees sont relues ligne a ligne depuis metadata.txt plutot qu'avec
 configparser : le champ description multiligne de QGIS ferait echouer un
@@ -8,8 +13,8 @@ parseur INI strict.
 
 import os
 
-from qgis.PyQt.QtCore import Qt, QUrl
-from qgis.PyQt.QtGui import QDesktopServices, QFont, QPixmap
+from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtGui import QIcon, QPixmap
 from qgis.PyQt.QtWidgets import (
     QDialog, QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout,
 )
@@ -18,10 +23,13 @@ from ..core.network import SEED_FEATURE_GUARD, SEED_FEATURE_MAX
 from ..i18n import tr
 
 PLUGIN_DIR = os.path.dirname(os.path.dirname(__file__))
+ABOUT_DIR = os.path.join(PLUGIN_DIR, "icons", "about")
+GITHUB_URL = "https://github.com/Cartoyoyo/BVLIP"
 LINKEDIN_URL = "https://www.linkedin.com/in/ylaloux/"
-LICENSE_URL = "https://www.gnu.org/licenses/gpl-3.0.html"
+# Assez large pour tenir les trois badges sur une ligne.
+DIALOG_WIDTH = 500
 
-_META_FIELDS = ("name", "version", "author", "email", "tracker", "repository")
+_META_FIELDS = ("name", "version", "author", "repository")
 
 
 def read_metadata():
@@ -41,116 +49,125 @@ def read_metadata():
     return values
 
 
+def _image(name):
+    return os.path.join(ABOUT_DIR, name).replace("\\", "/")
+
+
 class AboutDialog(QDialog):
-    """Fiche d'identite du plugin : version, auteur, licence, signalement."""
+    """Fiche d'identite du plugin, commune a mes plugins QGIS."""
 
     def __init__(self, lang, parent=None):
         super().__init__(parent)
         self.lang = lang
         meta = read_metadata()
+        repository = meta["repository"] or GITHUB_URL
+        readme_url = repository + "/blob/main/README.md"
 
         self.setWindowTitle(tr("about_title", lang))
-        self.setFixedWidth(430)
-        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
+        self.setModal(True)
+        self.setFixedWidth(DIALOG_WIDTH)
+        self.setWindowFlags(
+            self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
+        icon_path = os.path.join(PLUGIN_DIR, "icons", "icon.png")
+        if os.path.exists(icon_path):
+            self.setWindowIcon(QIcon(icon_path))
 
-        layout = QVBoxLayout()
-        layout.setSpacing(10)
-        layout.setContentsMargins(20, 20, 20, 20)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(28, 24, 28, 20)
+        layout.setSpacing(14)
 
-        logo_path = os.path.join(PLUGIN_DIR, "icons", "logo.png")
-        if os.path.exists(logo_path):
-            lbl_logo = QLabel()
-            lbl_logo.setPixmap(
-                QPixmap(logo_path).scaledToWidth(160, Qt.TransformationMode.SmoothTransformation)
-            )
-            lbl_logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            layout.addWidget(lbl_logo)
+        banner = os.path.join(ABOUT_DIR, "logo-full.png")
+        if os.path.exists(banner):
+            lbl_banner = QLabel()
+            lbl_banner.setPixmap(QPixmap(banner))
+            lbl_banner.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            layout.addWidget(lbl_banner)
 
-        font_title = QFont()
-        font_title.setBold(True)
-        font_title.setPointSize(13)
-        lbl_name = QLabel(meta["name"])
-        lbl_name.setFont(font_title)
-        lbl_name.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(lbl_name)
+        badges = QLabel(
+            '<div style="line-height:220%">'
+            '<a href="https://qgis.org"><img src="{0}"></a>&nbsp;&nbsp;'
+            '<a href="{1}#sources-de-données"><img src="{2}"></a>&nbsp;&nbsp;'
+            '<a href="{1}"><img src="{3}"></a>'
+            '</div>'.format(_image("badge-qgis.png"), readme_url,
+                            _image("badge-donnees.png"),
+                            _image("badge-langue.png")))
+        badges.setOpenExternalLinks(True)
+        badges.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        badges.setWordWrap(True)
+        layout.addWidget(badges)
 
-        lbl_version = QLabel(tr("version_label", lang, version=meta["version"]))
-        lbl_version.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(lbl_version)
+        layout.addWidget(self._separator())
 
-        separator = QFrame()
-        separator.setFrameShape(QFrame.Shape.HLine)
-        separator.setFrameShadow(QFrame.Shadow.Sunken)
-        layout.addWidget(separator)
-
-        author = meta["author"] or "Yoan Laloux"
-        layout.addWidget(
-            self._link('<a href="{0}">{1}</a>'.format(LINKEDIN_URL, author))
-        )
-        if meta["email"]:
-            layout.addWidget(
-                self._link(
-                    '<a href="mailto:{0}">{0}</a>'.format(meta["email"])
-                )
-            )
-        layout.addWidget(
-            self._link('<a href="{0}">GNU GPL v3</a>'.format(LICENSE_URL))
-        )
-        if meta["repository"]:
-            layout.addWidget(
-                self._link(
-                    '<a href="{0}">{1}</a>'.format(
-                        meta["repository"],
-                        meta["repository"].replace("https://", ""),
-                    )
-                )
-            )
+        about = QLabel(tr("about_description", lang))
+        about.setWordWrap(True)
+        about.setAlignment(Qt.AlignmentFlag.AlignJustify)
+        layout.addWidget(about)
 
         # Les seuils sont lus dans le module qui les applique, jamais
         # recopies : une fiche qui annonce une limite differente de celle
         # que le calcul oppose est pire que pas de fiche du tout.
-        limits = QLabel(tr("about_limits", lang,
-                           guard="{0:,}".format(SEED_FEATURE_GUARD).replace(",", " "),
-                           hard="{0:,}".format(SEED_FEATURE_MAX).replace(",", " ")))
+        limits = QLabel(tr(
+            "about_limits", lang,
+            guard="{0:,}".format(SEED_FEATURE_GUARD).replace(",", " "),
+            hard="{0:,}".format(SEED_FEATURE_MAX).replace(",", " ")))
         limits.setWordWrap(True)
-        limits.setStyleSheet(
-            "color:#2c3e50;font-size:10px;background:#ecf0f1;"
-            "border-radius:4px;padding:8px"
-        )
+        limits.setAlignment(Qt.AlignmentFlag.AlignJustify)
+        limits.setStyleSheet("color:#5d6d7e;")
         layout.addWidget(limits)
 
-        credit = QLabel(tr("data_credit", lang))
-        credit.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        credit.setWordWrap(True)
-        credit.setStyleSheet("color:#7f8c8d;font-size:10px")
-        layout.addWidget(credit)
+        warning = QLabel("<b>{0}</b> — {1}".format(
+            tr("about_warning_title", lang), tr("about_warning", lang)))
+        warning.setWordWrap(True)
+        warning.setAlignment(Qt.AlignmentFlag.AlignJustify)
+        warning.setStyleSheet(
+            "background:#FFF4E5; color:#6B4200; border:1px solid #E0A040;"
+            "border-radius:4px; padding:8px;")
+        layout.addWidget(warning)
 
-        buttons = QHBoxLayout()
-        if meta["tracker"]:
-            btn_bug = QPushButton(tr("report_bug", lang))
-            btn_bug.setCursor(Qt.CursorShape.PointingHandCursor)
-            btn_bug.setStyleSheet(
-                "QPushButton{background:#c0392b;color:#fff;border-radius:5px;"
-                "font-weight:bold;font-size:11px;padding:6px 12px}"
-                "QPushButton:hover{background:#d44534}"
-            )
-            tracker_url = meta["tracker"]
-            btn_bug.clicked.connect(
-                lambda: QDesktopServices.openUrl(QUrl(tracker_url))
-            )
-            buttons.addWidget(btn_bug)
-        buttons.addStretch()
+        layout.addWidget(self._separator())
+
+        author = QLabel('<b>{0}</b><br><a href="{1}#changelog">{2}</a>'.format(
+            meta["author"] or "Yoan Laloux", readme_url,
+            tr("version_label", lang, version=meta["version"])))
+        author.setOpenExternalLinks(True)
+        author.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(author)
+
+        links = QLabel(
+            '<a href="{0}"><img src="{1}"></a>&nbsp;&nbsp;'
+            '<a href="{2}"><img src="{3}"></a>'.format(
+                repository, _image("badge-github.png"),
+                LINKEDIN_URL, _image("badge-linkedin.png")))
+        links.setOpenExternalLinks(True)
+        links.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(links)
+
+        layout.addWidget(self._separator())
+
         btn_close = QPushButton(tr("close", lang))
+        btn_close.setDefault(True)
+        btn_close.setFixedWidth(100)
         btn_close.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_close.clicked.connect(self.accept)
+        buttons = QHBoxLayout()
+        buttons.addStretch()
         buttons.addWidget(btn_close)
+        buttons.addStretch()
         layout.addLayout(buttons)
 
-        self.setLayout(layout)
+        # Les textes a retour a la ligne trompent la taille par defaut de la
+        # fenetre, qui les tronquait : la hauteur est celle que le contenu
+        # demande a cette largeur, sans depasser l'ecran (720 px sur certains
+        # postes).
+        wanted = layout.totalHeightForWidth(DIALOG_WIDTH)
+        screen = parent.screen() if parent is not None else None
+        if screen is not None:
+            wanted = min(wanted, int(screen.availableGeometry().height() * 0.95))
+        self.setFixedHeight(wanted)
 
     @staticmethod
-    def _link(html):
-        label = QLabel(html)
-        label.setOpenExternalLinks(True)
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        return label
+    def _separator():
+        separator = QFrame()
+        separator.setFrameShape(QFrame.Shape.HLine)
+        separator.setFrameShadow(QFrame.Shadow.Sunken)
+        return separator

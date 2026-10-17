@@ -16,7 +16,13 @@ import os
 from qgis.core import Qgis, QgsApplication, QgsMessageLog
 from qgis.PyQt.QtCore import QSettings, Qt
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction, QActionGroup, QMenu
+from qgis.PyQt.QtWidgets import QMenu
+
+# Qt6 (QGIS 4) range QAction et QActionGroup dans QtGui, Qt5 dans QtWidgets.
+try:
+    from qgis.PyQt.QtGui import QAction, QActionGroup
+except ImportError:
+    from qgis.PyQt.QtWidgets import QAction, QActionGroup
 
 from .i18n import LANGUAGES, resolve_language, tr
 
@@ -173,11 +179,11 @@ class BvlipPlugin:
 
     def open_settings(self):
         from .gui.settings_dialog import SettingsDialog
-        SettingsDialog(self.lang, self.iface.mainWindow()).exec_()
+        SettingsDialog(self.lang, self.iface.mainWindow()).exec()
 
     def show_about(self):
         from .gui.about_dialog import AboutDialog
-        AboutDialog(self.lang, self.iface.mainWindow()).exec_()
+        AboutDialog(self.lang, self.iface.mainWindow()).exec()
 
     def set_language(self, code):
         """Change la langue de toute l'interface du plugin."""

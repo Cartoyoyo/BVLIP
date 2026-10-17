@@ -37,7 +37,12 @@ def _engine_view():
     try:
         from qgis.PyQt.QtWebEngineWidgets import QWebEngineView
     except Exception:       # noqa: BLE001 - ImportError, ou module mal lie
-        return None
+        # QGIS 4 n'expose pas forcement le module sous qgis.PyQt : on le
+        # cherche alors directement dans PyQt6.
+        try:
+            from PyQt6.QtWebEngineWidgets import QWebEngineView
+        except Exception:   # noqa: BLE001
+            return None
     return QWebEngineView()
 
 

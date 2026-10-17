@@ -169,7 +169,7 @@ def _insert_image(sheet, path, anchor, width_px=None, height_px=None):
 def build_workbook(values, land_cover, streams_layer, charts_paths, map_image,
                    output_path, title, subtitle, protected=None,
                    structures=None, steu=None, population=None,
-                   prelevements=None):
+                   prelevements=None, agriculture=None):
     """Ecrit le classeur et renvoie son chemin, ou None si openpyxl manque."""
     if not available():
         return None
@@ -248,15 +248,28 @@ def build_workbook(values, land_cover, streams_layer, charts_paths, map_image,
             datetime.now().strftime("%d/%m/%Y à %H:%M"))
     )
     sheet["A{0}".format(row)].font = styles["footer"]
+    row += 1
+    from .layout import AVERTISSEMENT
+    sheet["A{0}".format(row)] = AVERTISSEMENT
+    sheet["A{0}".format(row)].font = Font(name="Calibri", size=8, bold=True,
+                                          color="FFB03A2E")
     _setup_a4(sheet, row)
 
     _sheet_land_cover(book, land_cover, styles)
+    _sheet_agriculture(book, agriculture, styles)
     _sheet_protected(book, protected, styles)
     _sheet_obstacles(book, structures, styles)
     _sheet_steu(book, steu, styles, population, values)
     _sheet_prelevements(book, prelevements, styles)
     _sheet_sources(book, styles)
     _sheet_streams(book, streams_layer, styles)
+
+    # L'avertissement du PDF, en pied d'impression de chaque onglet.
+    from .layout import AVERTISSEMENT
+    for each in book.worksheets:
+        each.oddFooter.center.text = AVERTISSEMENT
+        each.oddFooter.center.size = 7
+        each.oddFooter.center.color = "B03A2E"
 
     book.save(output_path)
     return output_path
@@ -341,6 +354,120 @@ def _sheet_land_cover(book, land_cover, styles):
         last_row = row
 
     _setup_a4(sheet, last_row, "D")
+
+
+def _sheet_agriculture(book, agriculture, styles):
+    """Agriculture declaree a la PAC, comme la section du rapport PDF."""
+    agriculture = agriculture or {}
+    rpg = agriculture.get("rpg") or {}
+    bio = agriculture.get("bio") or {}
+    prairies = agriculture.get("prairies") or {}
+    aoc = agriculture.get("aoc") or {}
+    if not (rpg.get("nb_parcelles") or bio.get("nb_parcelles")
+            or prairies.get("nb") or aoc.get("nb")):
+        return
+    sheet = book.create_sheet("Agriculture (PAC)")
+    sheet.sheet_view.showGridLines = False
+    sheet.column_dimensions["A"].width = 10
+    sheet.column_dimensions["B"].width = 52
+    sheet.column_dimensions["C"].width = 16
+    sheet.column_dimensions["D"].width = 16
+
+    def header(row, columns):
+        for column, label in columns:
+            cell = sheet["{0}{1}".format(column, row)]
+            cell.value = label
+            cell.font = styles["section"]
+            cell.fill = styles["band"]
+        return row + 1
+
+    def line(row, code, label, surface, part):
+        if code is not None:
+            sheet["A{0}".format(row)] = code
+        sheet["B{0}".format(row)] = label
+        sheet["C{0}".format(row)] = surface
+        sheet["C{0}".format(row)].number_format = "0.00"
+        sheet["D{0}".format(row)] = part
+        sheet["D{0}".format(row)].number_format = "0.0"
+        for column in "ABCD":
+            sheet["{0}{1}".format(column, row)].border = styles["rule"]
+        return row + 1
+
+    def title(row, text):
+        sheet["A{0}".format(row)] = text
+        sheet["A{0}".format(row)].font = styles["section"]
+        return row + 1
+
+    surface_columns = (("B", ""), ("C", "Surface (ha)"),
+                       ("D", "Part (% du bassin)"))
+    row = 1
+    if rpg.get("nb_parcelles"):
+        row = title(row, "Surface déclarée au RPG")
+        for label, value, fmt in (
+            ("Surface déclarée (ha)", rpg.get("surface_ha"), "0.00"),
+            ("Surface déclarée (% du bassin)", rpg.get("part_pct"), "0.0"),
+            ("Parcelles déclarées", rpg.get("nb_parcelles"), "# ##0"),
+            ("Taille moyenne (ha)", rpg.get("taille_moyenne_ha"), "0.00"),
+            ("Taille médiane (ha)", rpg.get("taille_mediane_ha"), "0.00"),
+        ):
+            sheet["B{0}".format(row)] = label
+            sheet["C{0}".format(row)] = value
+            sheet["C{0}".format(row)].number_format = fmt
+            row += 1
+
+        if rpg.get("herbe_ha") is not None:
+            row += 1
+            row = header(row, (("B", "Prairies et cultures"),)
+                         + surface_columns[1:])
+            row = line(row, None, "Prairies et surfaces pastorales",
+                       rpg["herbe_ha"], rpg["herbe_pct"])
+            row = line(row, None, "Cultures", rpg["cultures_ha"],
+                       rpg["cultures_pct"])
+
+        if rpg.get("categories"):
+            row += 1
+            row = header(row, (("B", "Catégorie de culture"),)
+                         + surface_columns[1:])
+            for item in rpg["categories"]:
+                row = line(row, None, item["libelle"], item["surface_ha"],
+                           item["part_pct"])
+
+        if rpg.get("cultures"):
+            row += 1
+            row = header(row, (("A", "Code"), ("B", "Culture déclarée"))
+                         + surface_columns[1:])
+            for item in rpg["cultures"]:
+                row = line(row, item["code"], item["libelle"],
+                           item["surface_ha"], item["part_pct"])
+
+    others = []
+    if bio.get("nb_parcelles"):
+        others.append(("Certifiée agriculture biologique",
+                       bio.get("certifie_ha"), bio.get("certifie_pct")))
+        if bio.get("conversion_ha"):
+            others.append(("En conversion vers le biologique",
+                           bio.get("conversion_ha"),
+                           bio.get("conversion_pct")))
+    if prairies.get("nb"):
+        others.append(("Prairies sensibles (BCAE, en zone Natura 2000)",
+                       prairies.get("surface_ha"), prairies.get("part_pct")))
+    if aoc.get("nb"):
+        others.append(("Aires AOC viticoles (INAO)", aoc.get("surface_ha"),
+                       aoc.get("part_pct")))
+    if others:
+        row += 1
+        row = header(row, (("B", "Engagements et zonages agricoles"),)
+                     + surface_columns[1:])
+        for label, surface, part in others:
+            row = line(row, None, label, surface, part)
+
+    row += 1
+    sheet["A{0}".format(row)] = (
+        "Le RPG ne recense que le déclaré : la surface minore la surface "
+        "agricole réelle. Les cultures détaillées sont limitées aux plus "
+        "étendues.")
+    sheet["A{0}".format(row)].font = styles["footer"]
+    _setup_a4(sheet, row, "D")
 
 
 def _sheet_protected(book, protected, styles):

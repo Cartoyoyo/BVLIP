@@ -1,7 +1,7 @@
 [general]
 name=BVLIP
 qgisMinimumVersion=3.40
-qgisMaximumVersion=3.99
+qgisMaximumVersion=4.99
 description=FR: Delimitation automatique du bassin versant hydrographique en amont d'un point, a partir du RGE ALTI, avec metriques morphometriques et rapport cartographique.
     EN: Automatic delineation of the upstream hydrographic watershed of a point, based on the French RGE ALTI DEM, with morphometric metrics and a map report.
     ES: Delimitacion automatica de la cuenca hidrografica aguas arriba de un punto, a partir del MDT RGE ALTI, con metricas morfometricas e informe cartografico.
