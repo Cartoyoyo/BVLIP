@@ -7,7 +7,7 @@
 **Cliquez un point sur un cours d'eau : le bassin versant qui l'alimente est délimité, caractérisé, cartographié et mis en rapport — sans préparer la moindre donnée.**
 
 [![QGIS](https://img.shields.io/badge/QGIS-3.40%2B-green?logo=qgis&logoColor=white)](https://qgis.org)
-[![Version](https://img.shields.io/badge/version-1.3.2-blue)](metadata.txt)
+[![Version](https://img.shields.io/badge/version-1.3.3-blue)](metadata.txt)
 [![License](https://img.shields.io/badge/license-GPL%20v3-orange)](LICENSE)
 [![Données](https://img.shields.io/badge/données-IGN%20%7C%20Sandre-informational)](https://geoservices.ign.fr)
 [![Interface](https://img.shields.io/badge/interface-FR%20%7C%20EN%20%7C%20ES%20%7C%20PT%20%7C%20DE-lightgrey)](i18n/__init__.py)
@@ -612,6 +612,7 @@ Le détail complet, avec les mesures qui ont motivé chaque correction, est dans
 
 | Version | Notes |
 |---------|-------|
+| **1.3.3** | Codes cultures PAC de nouveau nommés — onglet Excel « Agriculture (PAC) » — avertissement d'usage en pied de page — « À propos » refait — compatibilité QGIS 4 (Qt6) |
 | **1.1.1** | Pagination corrigée sur les pages de détail (total de pages faux depuis l'ajout de la page Sources) — référence de couche qui débordait de la page — écran « À propos » à jour |
 | **1.1.0** | Stations de traitement des eaux usées (STEU) avec normes de rejet calculées — population du bassin estimée par bâti et communes — prélèvements d'eau (Hub'Eau / BNPE) — page « Sources et méthode » en fin de rapport — vue 3D : drapé de couches, export GLB, réseau hydrographique par ordre de Strahler |
 | **1.0.1** | L'interface retrouve ses accents dans les cinq langues |

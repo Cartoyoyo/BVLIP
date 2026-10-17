@@ -3,6 +3,38 @@
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le
 plugin la [gestion sémantique de version](https://semver.org/lang/fr/).
 
+## [1.3.3] - 2026-10-17
+
+### Corrigé
+
+- **Codes cultures PAC.** Le service IGN a renommé les champs de sa table
+  des codes (`code_culture`, `libelle_culture`). La table revenait vide sans
+  erreur : PPH, BTH… s'affichaient bruts (« Code non répertorié » dans le
+  PDF) et les prairies temporaires étaient comptées en cultures. Les deux
+  noms de champs sont lus, et une table vide n'est plus gardée en mémoire.
+- **Catégorie non renseignée** affichée deux fois (valeur vide et « NA ») :
+  une seule ligne désormais.
+
+### Ajouté
+
+- **Classeur Excel : onglet « Agriculture (PAC) »**, absent jusqu'ici :
+  surface déclarée, prairies et cultures, catégories, cultures détaillées,
+  bio, prairies sensibles et AOC.
+- **Avertissement d'usage** en pied de chaque page du PDF et de chaque
+  onglet du classeur : document indicatif, données à vérifier par vos
+  propres moyens.
+
+### Modifié
+
+- **Fenêtre « À propos »** refaite sur le modèle commun à mes plugins :
+  bandeau, badges, présentation, encadré d'avertissement, liens GitHub et
+  LinkedIn, dans les cinq langues.
+- **Compatibilité QGIS 4 (Qt6).** `qgisMaximumVersion=4.99` ; `exec()` au
+  lieu de `exec_()` ; `QAction` pris dans QtGui ou QtWidgets ; anciens alias
+  d'énumérations QGIS remplacés par `Qgis.*` ; graisse de police en
+  `QFont.Weight` ; `mapPoint()` au lieu de `pos()`. Vérifié sous QGIS 3.44,
+  pas encore sous QGIS 4.
+
 ## [1.3.2] - 2026-09-25
 
 ### Ajouté
