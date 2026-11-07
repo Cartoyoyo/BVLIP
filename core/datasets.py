@@ -38,11 +38,17 @@ DATASETS = (
     ("corine", "sol", True),
     ("bati", "sol", True),
     ("foret", "sol", True),
+    # CarHab est seul decoche avec l'affinage : ses polygones pesent une
+    # trentaine de megaoctets pour cent cinquante kilometres carres, et sa
+    # couverture nationale n'est pas achevee.
+    ("carhab", "sol", False),
 
     ("rpg", "agricole", True),
     ("bio", "agricole", True),
     ("prairies", "agricole", True),
     ("aoc", "agricole", True),
+    ("haies", "agricole", True),
+    ("onf", "agricole", True),
 
     ("znieff1", "zonages", True),
     ("znieff2", "zonages", True),
@@ -54,16 +60,42 @@ DATASETS = (
     ("pnr", "zonages", True),
     ("ramsar", "zonages", True),
     ("zhumide", "zonages", True),
+    ("cen", "zonages", True),
+    ("compens", "zonages", True),
+    ("autres", "zonages", True),
+    ("zhim", "zonages", True),
+    ("gbif", "zonages", True),
 
     ("masse_eau", "eau", True),
     ("meso", "eau", True),
     ("her", "eau", True),
+    ("sage", "eau", True),
     ("roe", "eau", True),
     ("hydrometrie", "eau", True),
+    ("vigicrues", "eau", True),
+    ("prelevements", "eau", True),
     ("steu", "eau", True),
     ("population", "eau", True),
-    ("prelevements", "eau", True),
+    ("basias", "eau", True),
+    ("basol", "eau", True),
+    ("sis", "eau", True),
+    ("irep", "eau", True),
 )
+
+# Sous-titres places dans un onglet, au-dessus de la premiere donnee de leur
+# bloc : (cle de donnee, cle de bloc). Ils ne changent rien a ce que la case
+# rapatrie, seulement a la facon dont l'onglet se lit - la pression
+# anthropique et la biodiversite observee ne sont ni de l'eau ni des zonages,
+# mais ouvrir un sixieme onglet ferait deborder la barre des onglets.
+#
+# Le libelle du bloc se traduit par "dsblock_" suivi de sa cle.
+BLOCKS = {
+    "gbif": "biodiversite",
+    "basias": "pression",
+    "basol": "pression",
+    "sis": "pression",
+    "irep": "pression",
+}
 
 KEYS = tuple(key for key, _tab, _on in DATASETS)
 DEFAULTS = frozenset(key for key, _tab, on in DATASETS if on)
@@ -72,7 +104,25 @@ DEFAULTS = frozenset(key for key, _tab, on in DATASETS if on)
 # protected.ZONAGES, et le controle ci-dessous s'assure qu'elles ne divergent
 # pas. protected n'est pas importe ici - il tirerait QGIS avec lui - donc la
 # verification vit dans tools/check_fields, qui a le droit de lire les deux.
-ZONAGE_KEYS = tuple(key for key, tab, _on in DATASETS if tab == "zonages")
+#
+# La biodiversite, rangee dans le meme onglet sous son propre bloc, n'en est
+# pas : ce sont des comptes d'observations, pas des surfaces a unir.
+ZONAGE_KEYS = tuple(key for key, tab, _on in DATASETS
+                    if tab == "zonages" and key not in BLOCKS)
+
+# Inventaires de la pression anthropique, interroges ensemble sur Georisques.
+PRESSION_KEYS = tuple(key for key, block in BLOCKS.items()
+                      if block == "pression")
+
+# Donnees ajoutees au catalogue apres que les reglages ont commence a etre
+# conserves, sans la liste des cles connues a l'enregistrement. Une
+# selection de ce temps-la ne pouvait pas les nommer : sans cette table,
+# elles resteraient decochees chez tous ceux qui avaient deja lance le
+# plugin, sans que rien ne leur dise qu'elles existent.
+ADDED_LATER = frozenset((
+    "carhab", "haies", "onf", "cen", "compens", "autres", "zhim", "gbif",
+    "sage", "vigicrues", "basias", "basol", "sis", "irep",
+))
 
 
 def keys_of(tab):
@@ -91,6 +141,22 @@ def label_key(key):
 def info_key(key):
     """Cle de la description longue, celle qui s'affiche au survol du i."""
     return "dsinfo_" + key
+
+
+def block_label_key(block):
+    return "dsblock_" + block
+
+
+def block_starts(tab):
+    """{cle de donnee: cle de bloc} des donnees qui ouvrent un bloc."""
+    starts = {}
+    seen = set()
+    for key in keys_of(tab):
+        block = BLOCKS.get(key)
+        if block and block not in seen:
+            seen.add(block)
+            starts[key] = block
+    return starts
 
 
 def normalise(selection):
@@ -117,12 +183,27 @@ def to_setting(selection):
     return ",".join(key for key in KEYS if key in chosen)
 
 
-def from_setting(text):
+def from_setting(text, known=None):
     """Relit une selection conservee. Une valeur absente rend les defauts.
 
     La chaine vide est une selection vide legitime - l'utilisateur a tout
     decoche - et se distingue donc de None, qui est l'absence de reglage.
+
+    known est la liste des cles que le catalogue comptait quand la selection
+    a ete enregistree. Une donnee apparue depuis n'a pas pu etre decochee :
+    elle prend son etat par defaut. Sans liste - reglage anterieur a son
+    introduction - ADDED_LATER en tient lieu.
     """
     if text is None:
         return set(DEFAULTS)
-    return normalise(str(text).split(","))
+    chosen = normalise(str(text).split(","))
+    if known is None:
+        unseen = set(ADDED_LATER)
+    else:
+        unseen = set(KEYS) - set(str(known).split(","))
+    return chosen | (set(DEFAULTS) & unseen)
+
+
+def known_setting():
+    """Cles du catalogue, a conserver a cote de la selection."""
+    return ",".join(KEYS)

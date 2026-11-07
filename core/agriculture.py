@@ -29,9 +29,21 @@ import json
 
 from qgis.core import QgsGeometry, QgsJsonUtils
 
-from .geoservices import GeoserviceError, wfs_features, wfs_pages
+from .clip import PreparedBasin, geometry_of
+from .geoservices import (
+    GeoserviceError, wfs_features, wfs_pages, wfs_pages_parallel,
+)
 
 LAYER_RPG = "RPG.LATEST:parcelles_graphiques"
+LAYER_HAIES = "HAIES.BOCAGES:haie"
+LAYER_ONF = "ONF.FORETS_PUBLIQUES:ONF_FORETS_PUBLIQUES"
+
+# Haies gardees avec leur forme pour la couche QGIS. Le lineaire et la
+# densite, eux, portent toujours sur toutes les haies du bassin : elles sont
+# cumulees page a page puis oubliees. Au-dela de ce nombre - un bassin de
+# l'ordre de mille kilometres carres en bocage dense - la couche est
+# tronquee et le traitement le signale, mais les chiffres restent justes.
+MAX_HAIES_COUCHE = 200000
 LAYER_CODES = "RPG.LATEST:codes_cultures"
 # Millesime fige, faute d'alias : le service publie RPG.LATEST pour les
 # parcelles anonymes mais rien d'equivalent pour la couche categorisee, seule
@@ -406,6 +418,90 @@ def _simple_area(typename, basin, label, progress=None, timeout=90):
     }
 
 
+def hedges(basin, progress=None):
+    """Lineaire de haies du bassin, d'apres le dispositif de suivi des bocages.
+
+    La densite se rapporte a la surface du bassin entier, et non a la surface
+    agricole : c'est la grandeur qui se compare d'un bassin a l'autre, la
+    surface declaree au RPG n'etant qu'un minorant de la surface agricole.
+
+    Les pages sont demandees de front et cumulees dans l'ordre ou elles
+    arrivent ; le decoupage, lui, reste dans ce fil, le bassin prepare n'etant
+    pas partage entre fils.
+    """
+    if progress:
+        progress("Haies (dispositif de suivi des bocages)...")
+    prepared = PreparedBasin(basin)
+    total = prepared.area
+    longueur = 0.0
+    nombre = 0
+    lignes = []
+    for page in wfs_pages_parallel(LAYER_HAIES, bbox=_bbox(basin),
+                                   timeout=120):
+        for feature in page:
+            clipped = prepared.clip(geometry_of(feature))
+            if clipped is None:
+                continue
+            length = clipped.length()
+            if length <= 0:
+                continue
+            longueur += length
+            nombre += 1
+            if len(lignes) < MAX_HAIES_COUCHE:
+                lignes.append({"longueur_m": length, "geometrie": clipped})
+        del page
+        if progress:
+            progress("Haies : {0} tronçon(s) retenu(s)...".format(nombre))
+    return {
+        "longueur_km": longueur / 1000.0,
+        "densite_m_ha": longueur / (total / 1e4) if total else None,
+        "nb": nombre,
+        "lignes": lignes,
+        "couche_tronquee": nombre > len(lignes),
+        "source": "Haies — dispositif de suivi des bocages (IGN / OFB)",
+    }
+
+
+def public_forests(basin, progress=None):
+    """Forets publiques relevant du regime forestier, gerees par l'ONF.
+
+    Domaniales - propriete de l'Etat - ou des collectivites : la distinction
+    est portee par la donnee et dit qui decide de la gestion.
+    """
+    if progress:
+        progress("Forêts publiques (ONF)...")
+    total = basin.area()
+    forets = []
+    for page in wfs_pages(LAYER_ONF, bbox=_bbox(basin), timeout=90):
+        for feature in page:
+            clipped = _clip(feature, basin)
+            if clipped is None:
+                continue
+            properties = feature.get("properties") or {}
+            domaniale = str(properties.get("cdom_frt") or "").upper() == "OUI"
+            area = clipped.area()
+            forets.append({
+                "code": properties.get("iidtn_frt"),
+                "nom": properties.get("llib_frt") or "Forêt publique",
+                "statut": "domaniale" if domaniale else "collectivité",
+                "surface_ha": area / 1e4,
+                "part_pct": 100.0 * area / total if total else None,
+                "geometrie": clipped,
+            })
+        del page
+    forets.sort(key=lambda f: -f["surface_ha"])
+    surface = sum(f["surface_ha"] for f in forets)
+    return {
+        "nb": len(forets),
+        "surface_ha": surface,
+        "part_pct": 100.0 * surface * 1e4 / total if total else None,
+        "domaniale_ha": sum(f["surface_ha"] for f in forets
+                            if f["statut"] == "domaniale"),
+        "forets": forets,
+        "source": "Forêts publiques relevant du régime forestier (ONF)",
+    }
+
+
 def palette(labels_herbe, labels_culture):
     """Une teinte par intitule, verte pour l'herbe et chaude pour le reste.
 
@@ -422,14 +518,29 @@ def palette(labels_herbe, labels_culture):
 
 
 def compute(basin, with_rpg=True, with_bio=True, with_prairies=True,
-            with_aoc=True, progress=None):
-    """Agriculture declaree du bassin.
+            with_aoc=True, with_haies=False, with_onf=False, progress=None):
+    """Agriculture declaree du bassin, et ce qui structure le paysage rural.
 
     Une couche indisponible laisse sa partie a None sans emporter les autres :
-    le RPG est le gros morceau, les deux autres ne sont que des complements.
+    le RPG est le gros morceau, les autres ne sont que des complements.
     """
     values = {"rpg": None, "bio": None, "prairies": None, "aoc": None,
-              "erreurs": []}
+              "haies": None, "onf": None, "erreurs": []}
+    if with_haies:
+        try:
+            values["haies"] = hedges(basin, progress)
+            if values["haies"]["couche_tronquee"]:
+                values["erreurs"].append(
+                    "Haies : couche limitée aux {0} premiers tronçons sur "
+                    "{1} ; linéaire et densité portent sur tous.".format(
+                        MAX_HAIES_COUCHE, values["haies"]["nb"]))
+        except GeoserviceError as exc:
+            values["erreurs"].append("Haies : {0}".format(exc))
+    if with_onf:
+        try:
+            values["onf"] = public_forests(basin, progress)
+        except GeoserviceError as exc:
+            values["erreurs"].append("Forêts publiques : {0}".format(exc))
     if with_rpg:
         try:
             values["rpg"] = declared_parcels(basin, progress)

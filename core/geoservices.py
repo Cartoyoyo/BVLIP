@@ -16,6 +16,7 @@ import json
 import re
 import time
 import urllib.parse
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 
 from qgis.core import QgsBlockingNetworkRequest
 from qgis.PyQt.QtCore import QUrl
@@ -68,6 +69,13 @@ WFS_BODY_RETRY_DELAYS = (1.0, 3.0, 6.0)
 # n'est plus celle de l'entree empoisonnee.
 CACHE_BUSTER = "_bvlip"
 
+# Pages demandees de front par wfs_pages_parallel. Les haies d'un bassin de
+# quelques centaines de kilometres carres se comptent en dizaines de
+# milliers de troncons, servis cinq mille par page : a la file, l'attente
+# est la somme des allers-retours, de front elle se rapproche du plus lent.
+# Six restent raisonnables pour un service public interroge sans cle.
+PARALLEL_WORKERS = 6
+
 
 class GeoserviceError(RuntimeError):
     """Echec d'acces a un service de la Geoplateforme."""
@@ -98,7 +106,7 @@ def _explain(reply):
     return text[:200] if text else "sans explication du service"
 
 
-def _fetch(url, timeout=DEFAULT_TIMEOUT, no_cache=False):
+def _fetch(url, timeout=DEFAULT_TIMEOUT, no_cache=False, allow_empty=False):
     """Requete HTTP GET avec reessais sur erreur reseau ou erreur serveur.
 
     Le telechargement passe par le gestionnaire de reseau de QGIS et non par
@@ -144,6 +152,14 @@ def _fetch(url, timeout=DEFAULT_TIMEOUT, no_cache=False):
         status = reply.attribute(
             QNetworkRequest.Attribute.HttpStatusCodeAttribute
         )
+        if allow_empty and status is not None and int(status) == 200 and \
+                not bytes(reply.content()):
+            # Un corps vide sous un code 200 n'est pas une panne pour qui l'a
+            # demande : c'est ainsi que Georisques dit "aucune entite dans
+            # l'emprise", la ou QGIS y voit une reponse vide en erreur. Pour
+            # tous les autres - le MNT au premier chef - il reste une panne a
+            # rejouer.
+            return b""
         if status is not None and 400 <= int(status) < 500:
             # Les services OGC repondent 400 avec un rapport d'exception qui
             # dit precisement ce qui cloche. Sans lui, l'utilisateur n'a qu'un
@@ -159,17 +175,34 @@ def _fetch(url, timeout=DEFAULT_TIMEOUT, no_cache=False):
     )
 
 
+def fetch_json(url, timeout=DEFAULT_TIMEOUT):
+    """Document JSON d'une API REST, par le meme chemin que le WFS.
+
+    Pour les services qui ne sont pas des WFS - l'API d'occurrences du GBIF -
+    mais qui gagnent tout autant au proxy du poste et aux reessais.
+    """
+    payload = _fetch(url, timeout)
+    try:
+        return json.loads(payload.decode("utf-8"))
+    except ValueError as exc:
+        raise GeoserviceError(
+            "Reponse illisible de {0} : {1}".format(url.split("?")[0], exc)
+        ) from exc
+
+
 # --------------------------------------------------------------------- WFS
 
 
-def _wfs_page(typename, bbox, page_size, start_index, resource_id, timeout):
+def _wfs_page(typename, bbox, page_size, start_index, resource_id, timeout,
+              url_base=WFS_URL, output_format="application/json",
+              properties=None):
     params = {
         "SERVICE": "WFS",
         "VERSION": "2.0.0",
         "REQUEST": "GetFeature",
         "TYPENAMES": typename,
         "SRSNAME": CRS,
-        "OUTPUTFORMAT": "application/json",
+        "OUTPUTFORMAT": output_format,
         "COUNT": str(page_size),
     }
     if bbox is not None:
@@ -178,8 +211,13 @@ def _wfs_page(typename, bbox, page_size, start_index, resource_id, timeout):
         params["RESOURCEID"] = resource_id
     if start_index:
         params["STARTINDEX"] = str(start_index)
+    if properties:
+        # Seuls les attributs demandes voyagent. Sur CarHab, qui porte une
+        # trentaine de champs texte dont des phrases entieres, la page perd
+        # pres d'un cinquieme de son poids - la geometrie fait le reste.
+        params["PROPERTYNAME"] = ",".join(properties)
 
-    url = WFS_URL + "?" + urllib.parse.urlencode(params)
+    url = url_base + "?" + urllib.parse.urlencode(params)
 
     # Une page illisible est rejouee, mais jamais a l'identique : voir
     # WFS_BODY_RETRY_DELAYS et CACHE_BUSTER. _fetch ne peut pas s'en
@@ -197,8 +235,14 @@ def _wfs_page(typename, bbox, page_size, start_index, resource_id, timeout):
             # amont comme en local.
             retry = dict(params)
             retry[CACHE_BUSTER] = "{0}-{1}".format(int(time.time()), attempt)
-            url = WFS_URL + "?" + urllib.parse.urlencode(retry)
-        payload = _fetch(url, timeout, no_cache=attempt > 0)
+            url = url_base + "?" + urllib.parse.urlencode(retry)
+        payload = _fetch(url, timeout, no_cache=attempt > 0,
+                         allow_empty=url_base != WFS_URL)
+        if not payload and url_base != WFS_URL:
+            # Georisques ne sert rien du tout quand l'emprise est vide, pas
+            # meme une collection vide. La Geoplateforme, elle, rend toujours
+            # du GeoJSON : chez elle un corps vide reste une panne a rejouer.
+            return []
         try:
             return json.loads(payload.decode("utf-8")).get("features", [])
         except ValueError:
@@ -222,7 +266,8 @@ def _wfs_page(typename, bbox, page_size, start_index, resource_id, timeout):
 
 def wfs_pages(typename, bbox=None, resource_id=None,
               page_size=WFS_PAGE_SIZE, max_features=WFS_MAX_FEATURES,
-              timeout=DEFAULT_TIMEOUT):
+              timeout=DEFAULT_TIMEOUT, url_base=WFS_URL,
+              output_format="application/json", properties=None):
     """Parcourt une couche WFS page par page, sans tout garder en memoire.
 
     bbox est un quadruplet (xmin, ymin, xmax, ymax) en Lambert 93.
@@ -234,18 +279,23 @@ def wfs_pages(typename, bbox=None, resource_id=None,
     entites en meme temps : sur un grand bassin, le bati de la BD TOPO se
     compte en dizaines de milliers de polygones dont le seul texte GeoJSON
     pese plusieurs centaines de megaoctets.
+
+    url_base et output_format servent les autres WFS 2.0 qui paginent de la
+    meme facon - Georisques, qui nomme son GeoJSON "geojson". max_features
+    a None leve le budget, pour un appelant qui cumule page a page sans rien
+    garder.
     """
     total = 0
     start = 0
     while True:
         page = _wfs_page(typename, bbox, page_size, start, resource_id,
-                         timeout)
+                         timeout, url_base, output_format, properties)
         total += len(page)
         if page:
             yield page
         if len(page) < page_size:
             return
-        if total >= max_features:
+        if max_features is not None and total >= max_features:
             raise WfsLimitError(
                 "Plus de {0} entites dans l'emprise pour {1}, budget que "
                 "le traitement s'est fixe. Le service, lui, en servirait "
@@ -268,6 +318,72 @@ def wfs_features(typename, bbox=None, resource_id=None,
                           max_features, timeout):
         features.extend(page)
     return features
+
+
+def wfs_count(typename, bbox=None, timeout=DEFAULT_TIMEOUT):
+    """Nombre d'entites d'une couche dans l'emprise, ou None si inconnu.
+
+    Le service le rend sans rien envoyer d'autre (RESULTTYPE=hits) : c'est ce
+    qui permet de connaitre d'avance les pages a demander, et donc de les
+    demander de front.
+    """
+    params = {
+        "SERVICE": "WFS",
+        "VERSION": "2.0.0",
+        "REQUEST": "GetFeature",
+        "TYPENAMES": typename,
+        "RESULTTYPE": "hits",
+        "SRSNAME": CRS,
+    }
+    if bbox is not None:
+        params["BBOX"] = "{0},{1},{2},{3},{4}".format(*bbox, CRS)
+    payload = _fetch(WFS_URL + "?" + urllib.parse.urlencode(params), timeout)
+    found = re.search(rb'numberMatched="(\d+)"', payload)
+    return int(found.group(1)) if found else None
+
+
+def wfs_pages_parallel(typename, bbox=None, page_size=WFS_PAGE_SIZE,
+                       workers=PARALLEL_WORKERS, properties=None,
+                       timeout=DEFAULT_TIMEOUT):
+    """Comme wfs_pages, sans budget, mais plusieurs pages demandees de front.
+
+    Les pages arrivent dans l'ordre ou le service les rend, pas dans celui
+    des index : l'appelant ne doit que cumuler. Il n'en a jamais plus de
+    `workers` en attente a la fois, si bien que la memoire reste celle de
+    quelques pages, quelle que soit la taille de la couche.
+
+    Le nombre d'entites est demande d'abord ; si le service ne le dit pas,
+    on retombe sur la pagination a la file, qui n'a pas besoin de le savoir.
+    Chaque page passe par _wfs_page et garde donc son reessai hors cache.
+    """
+    total = wfs_count(typename, bbox, timeout)
+    if total is None:
+        yield from wfs_pages(typename, bbox, page_size=page_size,
+                             max_features=None, timeout=timeout,
+                             properties=properties)
+        return
+    if total == 0:
+        return
+
+    starts = list(range(0, total, page_size))
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        pending = set()
+        for start in starts:
+            if len(pending) >= workers:
+                done, pending = wait(pending, return_when=FIRST_COMPLETED)
+                for future in done:
+                    page = future.result()
+                    if page:
+                        yield page
+            pending.add(pool.submit(
+                _wfs_page, typename, bbox, page_size, start, None, timeout,
+                WFS_URL, "application/json", properties))
+        while pending:
+            done, pending = wait(pending, return_when=FIRST_COMPLETED)
+            for future in done:
+                page = future.result()
+                if page:
+                    yield page
 
 
 # --------------------------------------------------------------------- WMS

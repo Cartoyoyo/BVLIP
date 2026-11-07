@@ -191,8 +191,22 @@ TR = {
         "pt": "Agrícola", "de": "Landwirtschaft",
     },
     "dstab_zonages": {
-        "fr": "Zonages", "en": "Designations", "es": "Zonificación",
-        "pt": "Zonamentos", "de": "Schutzgebiete",
+        "fr": "Nature", "en": "Nature", "es": "Naturaleza",
+        "pt": "Natureza", "de": "Natur",
+    },
+    "dsblock_biodiversite": {
+        "fr": "Biodiversité observée",
+        "en": "Recorded biodiversity",
+        "es": "Biodiversidad observada",
+        "pt": "Biodiversidade observada",
+        "de": "Beobachtete Artenvielfalt",
+    },
+    "dsblock_pression": {
+        "fr": "Pression anthropique",
+        "en": "Human pressure",
+        "es": "Presión antrópica",
+        "pt": "Pressão antrópica",
+        "de": "Menschlicher Druck",
     },
     "dstab_eau": {
         "fr": "Eau", "en": "Water", "es": "Agua",
@@ -497,8 +511,344 @@ TR = {
         "pt": "Estações hidrométricas",
         "de": "Pegelstationen",
     },
+    "ds_carhab": {
+        "fr": "Habitats CarHab (lourd)",
+        "en": "CarHab habitats (heavy)",
+        "es": "Hábitats CarHab (pesado)",
+        "pt": "Habitats CarHab (pesado)",
+        "de": "CarHab-Lebensräume (umfangreich)",
+    },
+    "ds_haies": {
+        "fr": "Haies",
+        "en": "Hedgerows",
+        "es": "Setos",
+        "pt": "Sebes",
+        "de": "Hecken",
+    },
+    "ds_onf": {
+        "fr": "Forêts publiques (ONF)",
+        "en": "Public forests (ONF)",
+        "es": "Bosques públicos (ONF)",
+        "pt": "Florestas públicas (ONF)",
+        "de": "Öffentliche Wälder (ONF)",
+    },
+    "ds_cen": {
+        "fr": "Conservatoires d'espaces naturels",
+        "en": "Conservation land trusts (CEN)",
+        "es": "Conservatorios de espacios naturales",
+        "pt": "Conservatórios de espaços naturais",
+        "de": "Naturschutz-Flächenträger (CEN)",
+    },
+    "ds_compens": {
+        "fr": "Mesures compensatoires",
+        "en": "Biodiversity offsets",
+        "es": "Medidas compensatorias",
+        "pt": "Medidas compensatórias",
+        "de": "Ausgleichsmaßnahmen",
+    },
+    "ds_autres": {
+        "fr": "Autres protections",
+        "en": "Other protected areas",
+        "es": "Otras protecciones",
+        "pt": "Outras proteções",
+        "de": "Weitere Schutzgebiete",
+    },
+    "ds_zhim": {
+        "fr": "Zones humides d'importance majeure",
+        "en": "Wetlands of major importance",
+        "es": "Humedales de importancia mayor",
+        "pt": "Zonas húmidas de grande importância",
+        "de": "Feuchtgebiete von großer Bedeutung",
+    },
+    "ds_gbif": {
+        "fr": "Espèces observées (GBIF)",
+        "en": "Recorded species (GBIF)",
+        "es": "Especies observadas (GBIF)",
+        "pt": "Espécies observadas (GBIF)",
+        "de": "Beobachtete Arten (GBIF)",
+    },
+    "ds_sage": {
+        "fr": "SAGE",
+        "en": "SAGE water management plans",
+        "es": "Planes SAGE",
+        "pt": "Planos SAGE",
+        "de": "SAGE-Bewirtschaftungspläne",
+    },
+    "ds_vigicrues": {
+        "fr": "Vigicrues",
+        "en": "Vigicrues flood monitoring",
+        "es": "Vigicrues (crecidas)",
+        "pt": "Vigicrues (cheias)",
+        "de": "Vigicrues (Hochwasser)",
+    },
+    "ds_basias": {
+        "fr": "Anciens sites industriels (BASIAS)",
+        "en": "Former industrial sites (BASIAS)",
+        "es": "Antiguos sitios industriales (BASIAS)",
+        "pt": "Antigos locais industriais (BASIAS)",
+        "de": "Ehemalige Industriestandorte (BASIAS)",
+    },
+    "ds_basol": {
+        "fr": "Sites pollués (BASOL)",
+        "en": "Polluted sites (BASOL)",
+        "es": "Sitios contaminados (BASOL)",
+        "pt": "Locais poluídos (BASOL)",
+        "de": "Altlasten (BASOL)",
+    },
+    "ds_sis": {
+        "fr": "Secteurs d'information sur les sols",
+        "en": "Soil information areas (SIS)",
+        "es": "Sectores de información de suelos",
+        "pt": "Setores de informação de solos",
+        "de": "Bodeninformationsbereiche (SIS)",
+    },
+    "ds_irep": {
+        "fr": "Établissements pollueurs (IREP)",
+        "en": "Polluting facilities (IREP)",
+        "es": "Establecimientos contaminantes (IREP)",
+        "pt": "Estabelecimentos poluidores (IREP)",
+        "de": "Emittierende Betriebe (IREP)",
+    },
 
     # --- Descriptions longues, au survol du i ------------------------------
+    "dsinfo_carhab": {
+        "fr": "Cartographie nationale des habitats (CarHab) : physionomie de "
+              "la végétation — prairie fauchée ou pâturée, culture, forêt, "
+              "fourré — et humidité du sol, d'où la part de sols humides du "
+              "bassin, ses zones humides potentielles. Couverture nationale "
+              "encore incomplète. Lourd : une trentaine de mégaoctets pour "
+              "150 km², d'où la case décochée par défaut.",
+        "en": "National habitat map (CarHab): vegetation physiognomy — mown "
+              "or grazed grassland, crop, forest, scrub — and soil moisture, "
+              "giving the share of wet soils in the basin, its potential "
+              "wetlands. National coverage still incomplete. Heavy: about "
+              "thirty megabytes for 150 km², hence unchecked by default.",
+        "es": "Cartografía nacional de hábitats (CarHab): fisionomía de la "
+              "vegetación — prado segado o pastado, cultivo, bosque, "
+              "matorral — y humedad del suelo, de donde la proporción de "
+              "suelos húmedos de la cuenca. Cobertura nacional aún "
+              "incompleta. Pesado: unos treinta megabytes para 150 km², por "
+              "eso viene desmarcado.",
+        "pt": "Cartografia nacional de habitats (CarHab): fisionomia da "
+              "vegetação — prado ceifado ou pastoreado, cultura, floresta, "
+              "mato — e humidade do solo, de onde a parte de solos húmidos "
+              "da bacia. Cobertura nacional ainda incompleta. Pesado: cerca "
+              "de trinta megabytes para 150 km², por isso vem desmarcado.",
+        "de": "Nationale Lebensraumkarte (CarHab): Physiognomie der "
+              "Vegetation — Mähwiese oder Weide, Acker, Wald, Gebüsch — und "
+              "Bodenfeuchte, daraus der Anteil feuchter Böden im Gebiet. "
+              "Landesweite Abdeckung noch unvollständig. Umfangreich: rund "
+              "dreißig Megabyte für 150 km², daher standardmäßig "
+              "abgewählt.",
+    },
+    "dsinfo_haies": {
+        "fr": "Haies du dispositif de suivi des bocages (IGN / OFB) : "
+              "linéaire en kilomètres et densité en mètres par hectare de "
+              "bassin. La haie freine le ruissellement et l'érosion. Les "
+              "chiffres portent sur toutes les haies ; la couche QGIS est "
+              "limitée à 200 000 tronçons sur les très grands bassins.",
+        "en": "Hedgerows from the bocage monitoring scheme (IGN / OFB): "
+              "length in kilometres and density in metres per hectare of "
+              "basin. Hedgerows slow runoff and erosion. Figures cover all "
+              "hedgerows; the QGIS layer is capped at 200,000 segments on "
+              "very large basins.",
+        "es": "Setos del dispositivo de seguimiento del bocage (IGN / OFB): "
+              "longitud en kilómetros y densidad en metros por hectárea. El "
+              "seto frena la escorrentía y la erosión. Las cifras cubren "
+              "todos los setos; la capa QGIS se limita a 200 000 tramos en "
+              "cuencas muy grandes.",
+        "pt": "Sebes do dispositivo de monitorização do bocage (IGN / OFB): "
+              "extensão em quilómetros e densidade em metros por hectare. A "
+              "sebe trava o escoamento e a erosão. Os números cobrem todas "
+              "as sebes; a camada QGIS limita-se a 200 000 troços em bacias "
+              "muito grandes.",
+        "de": "Hecken aus dem Heckenmonitoring (IGN / OFB): Länge in "
+              "Kilometern und Dichte in Metern je Hektar Gebiet. Hecken "
+              "bremsen Abfluss und Erosion. Die Zahlen umfassen alle "
+              "Hecken; die QGIS-Ebene ist bei sehr großen Gebieten auf "
+              "200 000 Abschnitte begrenzt.",
+    },
+    "dsinfo_onf": {
+        "fr": "Forêts publiques relevant du régime forestier, gérées par "
+              "l'ONF : domaniales ou de collectivités, avec leur surface "
+              "dans le bassin. Elles disent qui décide de la gestion "
+              "forestière.",
+        "en": "Public forests under the forest regime, managed by the ONF: "
+              "state-owned or owned by local authorities, with their area in "
+              "the basin.",
+        "es": "Bosques públicos bajo régimen forestal, gestionados por la "
+              "ONF: estatales o de entidades locales, con su superficie en "
+              "la cuenca.",
+        "pt": "Florestas públicas sob regime florestal, geridas pela ONF: "
+              "do Estado ou de autarquias, com a sua área na bacia.",
+        "de": "Öffentliche Wälder unter Forstregime, verwaltet vom ONF: "
+              "Staats- oder Gemeindewald, mit ihrer Fläche im Gebiet.",
+    },
+    "dsinfo_cen": {
+        "fr": "Sites des conservatoires d'espaces naturels, acquis ou "
+              "conventionnés pour être gérés (INPN). Comptés dans le total "
+              "sans double compte.",
+        "en": "Sites held or managed under agreement by the regional "
+              "conservation land trusts (INPN). Included in the total "
+              "without double counting.",
+        "es": "Sitios de los conservatorios de espacios naturales, "
+              "adquiridos o convenidos para su gestión (INPN).",
+        "pt": "Sítios dos conservatórios de espaços naturais, adquiridos ou "
+              "conveniados para gestão (INPN).",
+        "de": "Flächen der regionalen Naturschutz-Flächenträger, erworben "
+              "oder vertraglich zur Pflege übernommen (INPN).",
+    },
+    "dsinfo_compens": {
+        "fr": "Emprises des mesures compensatoires des atteintes à la "
+              "biodiversité prescrites aux aménageurs (Géoplateforme), avec "
+              "le projet qui les a rendues nécessaires.",
+        "en": "Footprints of biodiversity offset measures imposed on "
+              "developers (Géoplateforme), with the project that required "
+              "them.",
+        "es": "Superficies de las medidas compensatorias impuestas a los "
+              "promotores (Géoplateforme), con el proyecto que las motivó.",
+        "pt": "Áreas das medidas compensatórias impostas aos promotores "
+              "(Géoplateforme), com o projeto que as motivou.",
+        "de": "Flächen der Ausgleichsmaßnahmen, die Vorhabenträgern "
+              "auferlegt wurden (Géoplateforme), mit dem auslösenden "
+              "Vorhaben.",
+    },
+    "dsinfo_autres": {
+        "fr": "Protections plus rares, réunies sous une case : cœurs de "
+              "parcs nationaux, réserves biologiques, réserves de biosphère "
+              "et arrêtés de protection d'habitat naturel (INPN). Chaque "
+              "site garde la mention de sa couche d'origine.",
+        "en": "Rarer protections under a single box: national park cores, "
+              "biological reserves, biosphere reserves and natural habitat "
+              "protection orders (INPN). Each site keeps its source layer.",
+        "es": "Protecciones más raras en una sola casilla: núcleos de "
+              "parques nacionales, reservas biológicas, reservas de la "
+              "biosfera y decretos de protección de hábitat (INPN).",
+        "pt": "Proteções mais raras numa só casa: núcleos de parques "
+              "nacionais, reservas biológicas, reservas da biosfera e "
+              "decretos de proteção de habitat (INPN).",
+        "de": "Seltenere Schutzgebiete in einem Feld: Kernzonen von "
+              "Nationalparks, biologische Reservate, Biosphärenreservate "
+              "und Lebensraumschutzerlasse (INPN).",
+    },
+    "dsinfo_zhim": {
+        "fr": "Zones humides d'importance majeure de l'Observatoire national "
+              "des zones humides (réseau partenarial des données sur les "
+              "zones humides) : 152 grands ensembles en France.",
+        "en": "Wetlands of major importance from the national wetland "
+              "observatory (wetland data partnership network): 152 large "
+              "areas in France.",
+        "es": "Humedales de importancia mayor del observatorio nacional de "
+              "humedales: 152 grandes conjuntos en Francia.",
+        "pt": "Zonas húmidas de grande importância do observatório nacional "
+              "de zonas húmidas: 152 grandes conjuntos em França.",
+        "de": "Feuchtgebiete von großer Bedeutung der nationalen "
+              "Feuchtgebietsbeobachtung: 152 große Gebiete in Frankreich.",
+    },
+    "dsinfo_gbif": {
+        "fr": "Observations naturalistes publiées dans le GBIF, en comptes "
+              "seulement : nombre d'observations et d'espèces distinctes, "
+              "par grand groupe. Reflète l'effort d'observation autant que "
+              "la richesse réelle.",
+        "en": "Species records published in GBIF, as counts only: number of "
+              "records and distinct species, by major group. Reflects "
+              "survey effort as much as actual richness.",
+        "es": "Observaciones publicadas en GBIF, solo en recuentos: "
+              "observaciones y especies distintas por grupo. Refleja el "
+              "esfuerzo de observación tanto como la riqueza real.",
+        "pt": "Observações publicadas no GBIF, apenas em contagens: "
+              "observações e espécies distintas por grupo. Reflete o esforço "
+              "de observação tanto quanto a riqueza real.",
+        "de": "Im GBIF veröffentlichte Beobachtungen, nur als Zählungen: "
+              "Beobachtungen und verschiedene Arten je Gruppe. Spiegelt den "
+              "Beobachtungsaufwand ebenso wie den tatsächlichen Reichtum.",
+    },
+    "dsinfo_sage": {
+        "fr": "Schéma d'aménagement et de gestion des eaux couvrant le "
+              "bassin (Sandre) : son nom, son état d'avancement et la part "
+              "du bassin qu'il couvre. Il désigne la commission locale de "
+              "l'eau compétente.",
+        "en": "Water management plan (SAGE) covering the basin (Sandre): "
+              "name, stage and share of the basin covered.",
+        "es": "Plan de gestión del agua (SAGE) que cubre la cuenca "
+              "(Sandre): nombre, estado y parte de la cuenca cubierta.",
+        "pt": "Plano de gestão da água (SAGE) que cobre a bacia (Sandre): "
+              "nome, estado e parte da bacia coberta.",
+        "de": "Wasserbewirtschaftungsplan (SAGE) für das Gebiet (Sandre): "
+              "Name, Stand und abgedeckter Anteil.",
+    },
+    "dsinfo_vigicrues": {
+        "fr": "Tronçons de cours d'eau surveillés par Vigicrues et leurs "
+              "stations de mesure, dans le bassin. Un bassin sans tronçon "
+              "surveillé n'est pas sans risque : il n'est simplement pas "
+              "couvert par la vigilance nationale.",
+        "en": "River reaches monitored by Vigicrues and their gauging "
+              "stations in the basin. No monitored reach does not mean no "
+              "flood risk.",
+        "es": "Tramos vigilados por Vigicrues y sus estaciones en la "
+              "cuenca. Sin tramo vigilado no significa sin riesgo.",
+        "pt": "Troços vigiados pela Vigicrues e as suas estações na bacia. "
+              "Sem troço vigiado não significa sem risco.",
+        "de": "Von Vigicrues überwachte Abschnitte und ihre Pegel im "
+              "Gebiet. Kein überwachter Abschnitt heißt nicht kein Risiko.",
+    },
+    "dsinfo_basias": {
+        "fr": "Anciens sites industriels et activités de service "
+              "(Géorisques, BASIAS) : un inventaire historique, qui dit "
+              "qu'une activité potentiellement polluante a existé, pas "
+              "qu'il y a pollution.",
+        "en": "Former industrial and service sites (Géorisques, BASIAS): a "
+              "historical inventory, not proof of pollution.",
+        "es": "Antiguos sitios industriales y de servicios (Géorisques, "
+              "BASIAS): inventario histórico, no prueba de contaminación.",
+        "pt": "Antigos locais industriais e de serviços (Géorisques, "
+              "BASIAS): inventário histórico, não prova de poluição.",
+        "de": "Ehemalige Industrie- und Gewerbestandorte (Géorisques, "
+              "BASIAS): historisches Inventar, kein Nachweis einer "
+              "Verschmutzung.",
+    },
+    "dsinfo_basol": {
+        "fr": "Sites et sols pollués ou potentiellement pollués appelant une "
+              "action des pouvoirs publics (Géorisques, BASOL), avec l'état "
+              "de leur instruction.",
+        "en": "Polluted or potentially polluted sites requiring public "
+              "action (Géorisques, BASOL), with their case status.",
+        "es": "Sitios contaminados o potencialmente contaminados que "
+              "requieren acción pública (Géorisques, BASOL).",
+        "pt": "Locais poluídos ou potencialmente poluídos que exigem ação "
+              "pública (Géorisques, BASOL).",
+        "de": "Verschmutzte oder verdächtige Standorte mit behördlichem "
+              "Handlungsbedarf (Géorisques, BASOL).",
+    },
+    "dsinfo_sis": {
+        "fr": "Secteurs d'information sur les sols (Géorisques) : terrains "
+              "où l'État connaît une pollution justifiant des études de sol "
+              "en cas de changement d'usage. Des surfaces, en hectares.",
+        "en": "Soil information areas (Géorisques): land with known "
+              "pollution requiring soil studies before any change of use. "
+              "Areas, in hectares.",
+        "es": "Sectores de información de suelos (Géorisques): terrenos con "
+              "contaminación conocida. Superficies, en hectáreas.",
+        "pt": "Setores de informação de solos (Géorisques): terrenos com "
+              "poluição conhecida. Áreas, em hectares.",
+        "de": "Bodeninformationsbereiche (Géorisques): Flächen mit "
+              "bekannter Verschmutzung. Flächen in Hektar.",
+    },
+    "dsinfo_irep": {
+        "fr": "Établissements tenus de déclarer leurs rejets et déchets au "
+              "registre des émissions polluantes (Géorisques, IREP), avec "
+              "leur code d'activité. La seule des quatre données de "
+              "pression qui décrive le présent.",
+        "en": "Facilities required to report their emissions and waste to "
+              "the pollutant release register (Géorisques, IREP), with "
+              "their activity code.",
+        "es": "Establecimientos obligados a declarar sus emisiones al "
+              "registro de emisiones (Géorisques, IREP).",
+        "pt": "Estabelecimentos obrigados a declarar as suas emissões ao "
+              "registo de emissões (Géorisques, IREP).",
+        "de": "Betriebe mit Meldepflicht für Emissionen und Abfälle "
+              "(Géorisques, IREP), mit Tätigkeitsschlüssel.",
+    },
     "dsinfo_metriques": {
         "fr": "Surface, périmètre, indice de compacité de Gravelius, "
               "rectangle équivalent, hypsométrie en neuf points, pentes "

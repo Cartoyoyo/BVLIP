@@ -16,8 +16,9 @@ import tempfile
 import time
 
 from . import (
-    agriculture, dem, delineation, landcover, metrics, network, obstacles,
-    population, prelevements, protected, relief, steu, waterbody,
+    agriculture, biodiversite, dem, delineation, eau, landcover, metrics,
+    network, obstacles, population, prelevements, pressions, protected,
+    relief, steu, waterbody,
 )
 from . import datasets as catalogue
 from .delineation import CONTAINMENT_MIN
@@ -36,6 +37,8 @@ STEPS = (
     "agriculture",
     "zonages",
     "obstacles",
+    "gestion_eau",
+    "pression",
 )
 
 # Marge conservee de part et d'autre du bassin grossier lors du recadrage.
@@ -330,6 +333,9 @@ def _run(x, y, options, progress, feedback, cancelled, resume):
         "steu": None,
         "population": None,
         "prelevements": None,
+        "gestion_eau": None,
+        "pressions": None,
+        "biodiversite": None,
         "avertissements": [],
         "affinage": None,
         "relief": None,
@@ -455,7 +461,7 @@ def _run(x, y, options, progress, feedback, cancelled, resume):
     if stop():
         return result
 
-    if options.wants("corine", "bati", "foret"):
+    if options.wants("corine", "bati", "foret", "carhab"):
         step(6, "Occupation du sol")
         try:
             result["land_cover"] = landcover.compute(
@@ -463,8 +469,24 @@ def _run(x, y, options, progress, feedback, cancelled, resume):
                 with_corine=options.wants("corine"),
                 with_built_up=options.wants("bati"),
                 with_forest=options.wants("foret"),
+                with_carhab=options.wants("carhab"),
                 progress=lambda m: step(6, m),
             )
+            cover = result["land_cover"]
+            if cover.get("carhab_erreur"):
+                result["avertissements"].append(
+                    "Habitats CarHab non établis : {0}".format(
+                        cover["carhab_erreur"]))
+            carhab = cover.get("carhab") or {}
+            if carhab.get("couche_tronquee"):
+                result["avertissements"].append(
+                    "Habitats CarHab : couche limitée aux {0} premiers "
+                    "polygones sur {1} ; les parts portent sur tous.".format(
+                        landcover.MAX_CARHAB_COUCHE, carhab["nb"]))
+            if cover.get("carhab") is not None and not carhab.get("nb"):
+                result["avertissements"].append(
+                    "Habitats CarHab : aucun polygone sur ce bassin, que la "
+                    "couverture nationale n'atteint pas encore.")
         except Exception as exc:
             result["avertissements"].append(
                 "Occupation du sol non etablie : {0}".format(exc)
@@ -472,7 +494,7 @@ def _run(x, y, options, progress, feedback, cancelled, resume):
     if stop():
         return result
 
-    if options.wants("rpg", "bio", "prairies", "aoc"):
+    if options.wants("rpg", "bio", "prairies", "aoc", "haies", "onf"):
         step(7, "Agriculture declaree")
         try:
             result["agriculture"] = agriculture.compute(
@@ -481,6 +503,8 @@ def _run(x, y, options, progress, feedback, cancelled, resume):
                 with_bio=options.wants("bio"),
                 with_prairies=options.wants("prairies"),
                 with_aoc=options.wants("aoc"),
+                with_haies=options.wants("haies"),
+                with_onf=options.wants("onf"),
                 progress=lambda m: step(7, m),
             )
             for message in result["agriculture"].get("erreurs") or ():
@@ -511,6 +535,23 @@ def _run(x, y, options, progress, feedback, cancelled, resume):
     if stop():
         return result
 
+    if options.wants("gbif"):
+        step(8, "Biodiversité observée")
+        try:
+            values = biodiversite.compute(
+                delineation_result["geometry"],
+                progress=lambda m: step(8, m),
+            )
+            result["biodiversite"] = values.get("gbif")
+            for message in values.get("erreurs") or ():
+                result["avertissements"].append(message)
+        except Exception as exc:
+            result["avertissements"].append(
+                "Biodiversite non relevee : {0}".format(exc)
+            )
+    if stop():
+        return result
+
     if options.wants("roe", "hydrometrie"):
         step(9, "Obstacles a l'ecoulement")
         try:
@@ -535,12 +576,32 @@ def _run(x, y, options, progress, feedback, cancelled, resume):
     if stop():
         return result
 
+    if options.wants("sage", "vigicrues"):
+        step(10, "SAGE et Vigicrues")
+        try:
+            values = eau.compute(
+                delineation_result["geometry"],
+                with_sage=options.wants("sage"),
+                with_vigicrues=options.wants("vigicrues"),
+                progress=lambda m: step(10, m),
+            )
+            result["gestion_eau"] = values
+            for message in values.get("erreurs") or ():
+                result["avertissements"].append(message)
+        except Exception as exc:
+            result["avertissements"].append(
+                "SAGE et Vigicrues non releves : {0}".format(exc)
+            )
+
+    if stop():
+        return result
+
     if options.wants("steu"):
-        step(9, "Stations de traitement des eaux usees")
+        step(11, "Stations de traitement des eaux usees")
         try:
             values = steu.compute(
                 delineation_result["geometry"],
-                progress=lambda m: step(9, m),
+                progress=lambda m: step(11, m),
             )
             result["steu"] = values.get("steu")
             for message in values.get("erreurs") or ():
@@ -554,11 +615,11 @@ def _run(x, y, options, progress, feedback, cancelled, resume):
         return result
 
     if options.wants("population"):
-        step(9, "Population estimée")
+        step(11, "Population estimée")
         try:
             values = population.compute(
                 delineation_result["geometry"],
-                progress=lambda m: step(9, m),
+                progress=lambda m: step(11, m),
             )
             result["population"] = values.get("population")
             for message in values.get("erreurs") or ():
@@ -572,11 +633,11 @@ def _run(x, y, options, progress, feedback, cancelled, resume):
         return result
 
     if options.wants("prelevements"):
-        step(9, "Prélèvements d'eau")
+        step(11, "Prélèvements d'eau")
         try:
             values = prelevements.compute(
                 delineation_result["geometry"],
-                progress=lambda m: step(9, m),
+                progress=lambda m: step(11, m),
             )
             result["prelevements"] = values.get("prelevements")
             for message in values.get("erreurs") or ():
@@ -584,6 +645,25 @@ def _run(x, y, options, progress, feedback, cancelled, resume):
         except Exception as exc:
             result["avertissements"].append(
                 "Prelevements d'eau non releves : {0}".format(exc)
+            )
+
+    if stop():
+        return result
+
+    wanted_pressions = options.chosen(catalogue.PRESSION_KEYS)
+    if wanted_pressions:
+        step(11, "Sols pollués et rejets industriels")
+        try:
+            values = pressions.compute(
+                delineation_result["geometry"], keys=wanted_pressions,
+                progress=lambda m: step(11, m),
+            )
+            result["pressions"] = values
+            for message in values.get("erreurs") or ():
+                result["avertissements"].append(message)
+        except Exception as exc:
+            result["avertissements"].append(
+                "Pression anthropique non relevee : {0}".format(exc)
             )
 
     return result

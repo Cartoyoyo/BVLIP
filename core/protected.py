@@ -1,15 +1,21 @@
 # -*- coding: utf-8 -*-
 """Zonages environnementaux recoupant le bassin versant.
 
-Dix couches nationales, de deux natures qu'il ne faut pas confondre :
+Dix-sept couches nationales, de natures qu'il ne faut pas confondre :
 
-  inventaire     ZNIEFF de type I et II. Elles ne protegent rien - ce sont
-                 des inventaires scientifiques - mais elles signalent ce
-                 qu'un amenagement devra justifier d'ignorer.
+  inventaire     ZNIEFF de type I et II, zones humides d'importance majeure.
+                 Elles ne protegent rien - ce sont des inventaires - mais
+                 elles signalent ce qu'un amenagement devra justifier
+                 d'ignorer.
   protection     Natura 2000 (ZSC au titre des habitats, ZPS au titre des
                  oiseaux), arretes de protection de biotope, reserves
-                 naturelles nationales et regionales, sites Ramsar. Celles-la
-                 opposent un regime juridique.
+                 naturelles nationales et regionales, sites Ramsar, et le lot
+                 des protections plus rares. Celles-la opposent un regime
+                 juridique.
+  gestion        sites des conservatoires d'espaces naturels, acquis ou
+                 conventionnes pour etre geres.
+  compensation   emprises des mesures compensatoires des atteintes a la
+                 biodiversite, prescrites aux amenageurs.
 
 Les surfaces ne s'additionnent pas. Une ZNIEFF de type I est presque toujours
 incluse dans une ZNIEFF de type II, une ZSC et une ZPS se superposent sur les
@@ -76,14 +82,54 @@ ZONAGES = (
      "Site Ramsar", "protection", "#00FFFF"),
     ("zhumide", "TOURBIERES_ZONES-HUMIDES.BCAE:bcae",
      "Zones humides et tourbières BCAE", "protection", "#FF00A6"),
+    ("cen", "patrinat_cen:cen",
+     "Conservatoire d'espaces naturels", "gestion", "#FF8C00"),
+    ("compens", "MESURES_COMPENSATOIRES:emprises_polygones",
+     "Mesures compensatoires", "compensation", "#FFD700"),
+    # Quatre couches sous une seule case : elles sont rares - aucune sur
+    # l'Allier - et quatre cases presque toujours vides allongeraient
+    # l'onglet pour rien. Le site garde la mention de sa couche d'origine.
+    ("autres", ("patrinat_pn:parc_national", "patrinat_rb:rb",
+                "patrinat_bios:bios", "patrinat_aphn:aphn"),
+     "Autres protections", "protection", "#FF3030"),
+    ("zhim", "ZHIM",
+     "Zones humides d'importance majeure", "inventaire", "#00A86B"),
 )
+
+# Mention ajoutee au nom d'un site du lot "autres protections", pour qu'un
+# coeur de parc national ne se confonde pas avec une reserve biologique.
+SUBLABELS = {
+    "patrinat_pn:parc_national": "cœur de parc national",
+    "patrinat_rb:rb": "réserve biologique",
+    "patrinat_bios:bios": "réserve de biosphère",
+    "patrinat_aphn:aphn": "arrêté de protection d'habitat naturel",
+}
+
+# Couches servies ailleurs que par la Geoplateforme : (url, version WFS).
+#
+# Les zones humides d'importance majeure viennent du reseau partenarial des
+# donnees sur les zones humides, un serveur QGIS qui ne parle que le WFS 1.0
+# et 1.1 et ne sert pas de GeoJSON. Elles passent donc par le client WFS de
+# QGIS, comme le Sandre, et non par geoservices.
+OTHER_SERVICES = {
+    "ZHIM": ("http://wms.reseau-zones-humides.org/cgi-bin/wmsfma", "1.1.0"),
+}
 
 # Attributs portant le nom du site, dans l'ordre de preference. Les couches de
 # l'INPN partagent un schema unique (nom_site, id_mnhn, url_fiche) ; la couche
-# BCAE a le sien.
-NAME_KEYS = ("nom_site", "type_zone")
-CODE_KEYS = ("id_mnhn", "id_local")
+# BCAE a le sien, les mesures compensatoires et les zones humides aussi.
+NAME_KEYS = ("nom_site", "type_zone", "projet", "NOM_ZH")
+CODE_KEYS = ("id_mnhn", "id_local", "identifiant", "CODE_ZH")
 URL_KEYS = ("url_fiche",)
+
+# Fiche des sites Natura 2000 : celle de l'Agence europeenne pour
+# l'environnement (BISE) plutot que celle de l'INPN. Le site de l'INPN ne
+# sert plus ses fiches de zones depuis l'incident informatique du Museum ;
+# la fiche europeenne reprend le formulaire officiel du site et ne depend
+# pas du MNHN. Les autres zonages n'ont pas d'equivalent hors de
+# l'INPN et gardent son lien.
+NATURA2000_KEYS = ("zsc", "zps")
+NATURA2000_URL = "https://biodiversity.europa.eu/sites/natura2000/{0}"
 
 # Les geometries retenues sont unies par paquets plutot qu'en une fois. Une
 # union de plusieurs milliers de polygones - la couche BCAE en compte beaucoup
@@ -124,8 +170,44 @@ def _clip(geometry, basin):
     return clipped
 
 
+def _sites_other(typename, basin, bbox):
+    """Sites d'une couche servie hors Geoplateforme, par le client WFS QGIS.
+
+    L'emprise est declaree dans l'URI : sans restrictToRequestBBOX, QGIS
+    telechargerait la couche nationale avant de la filtrer.
+    """
+    from qgis.core import QgsFeatureRequest, QgsRectangle, QgsVectorLayer
+
+    url, version = OTHER_SERVICES[typename]
+    uri = ("restrictToRequestBBOX='1' srsname='EPSG:2154' typename='{0}' "
+           "url='{1}' version='{2}'").format(typename, url, version)
+    source = QgsVectorLayer(uri, typename, "WFS")
+    if not source.isValid():
+        raise ProtectedAreasError("service {0} injoignable".format(url))
+    request = QgsFeatureRequest().setFilterRect(QgsRectangle(*bbox))
+    names = source.fields().names()
+    for feature in source.getFeatures(request):
+        clipped = _clip(QgsGeometry(feature.geometry()), basin)
+        if clipped is not None:
+            yield {name: feature[name] for name in names}, clipped
+
+
 def _sites(typename, basin, bbox):
-    """Sites d'une couche de la Geoplateforme rencontrant le bassin."""
+    """Sites d'une couche rencontrant le bassin.
+
+    Une table de couches - le lot "autres protections" - est parcourue couche
+    par couche, chaque site gardant la mention de la sienne.
+    """
+    if isinstance(typename, tuple):
+        for each in typename:
+            for properties, clipped in _sites(each, basin, bbox):
+                properties = dict(properties)
+                properties["_sous_type"] = SUBLABELS.get(each)
+                yield properties, clipped
+        return
+    if typename in OTHER_SERVICES:
+        yield from _sites_other(typename, basin, bbox)
+        return
     for page in wfs_pages(typename, bbox=bbox, timeout=90):
         for feature in page:
             geometry = QgsGeometry(
@@ -147,10 +229,17 @@ def _zonage(entry, basin, total, bbox):
     geometries = []
     for properties, clipped in _sites(typename, basin, bbox):
         area = clipped.area()
+        nom = _first(properties, NAME_KEYS) or label
+        if properties.get("_sous_type"):
+            nom = "{0} ({1})".format(nom, properties["_sous_type"])
+        code = _first(properties, CODE_KEYS)
+        url = _first(properties, URL_KEYS)
+        if key in NATURA2000_KEYS and code:
+            url = NATURA2000_URL.format(code)
         sites.append({
-            "nom": _first(properties, NAME_KEYS) or label,
-            "code": _first(properties, CODE_KEYS),
-            "url": _first(properties, URL_KEYS),
+            "nom": nom,
+            "code": code,
+            "url": url,
             "surface_ha": area / 1e4,
             "part_pct": 100.0 * area / total if total else None,
             # La part decoupee sur le bassin, et non le site entier : c'est

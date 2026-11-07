@@ -51,6 +51,9 @@ MAX_DETAIL = 300
 SOURCE = ("Prélèvements en eau (Hub'Eau / BNPE, Office français de la "
          "biodiversité) — dernière année connue par ouvrage")
 
+# Usage "eau potable" de la BNPE, reconnu dans son libelle.
+USAGE_AEP = "potable"
+
 WGS84 = QgsCoordinateReferenceSystem("EPSG:4326")
 LAMBERT93 = QgsCoordinateReferenceSystem("EPSG:2154")
 
@@ -144,15 +147,26 @@ def withdrawals(basin, progress=None):
 
     par_usage = {}
     volume_total = 0.0
+    nb_aep = 0
+    volume_aep = 0.0
     for record in kept:
         volume = record["volume_m3"] or 0.0
         volume_total += volume
         usage = record["usage"] or "Usage non renseigné"
         par_usage[usage] = par_usage.get(usage, 0.0) + volume
+        if USAGE_AEP in usage.lower():
+            nb_aep += 1
+            volume_aep += volume
 
     return {
         "nb": len(kept),
         "volume_total_m3": volume_total if kept else None,
+        # Les captages d'eau potable a part : leurs perimetres de protection
+        # ne sont pas diffuses - donnee sensible, absente du Geoportail de
+        # l'urbanisme sur toute la France -, et les ouvrages de la BNPE a
+        # usage d'eau potable sont ce qui s'en approche le plus.
+        "nb_aep": nb_aep if kept else None,
+        "volume_aep_m3": volume_aep if nb_aep else None,
         "annee_recente": max((r["annee"] for r in kept), default=None),
         "par_usage": sorted(
             ({"usage": usage, "volume_m3": volume}

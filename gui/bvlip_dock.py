@@ -102,6 +102,11 @@ BTN_SMALL = (
 # Le i des descriptions : present sans peser, il ne doit pas concurrencer du
 # regard la case qu'il accompagne.
 INFO_MARK = "QLabel{color:#7f8c8d;font-size:12px}QLabel:hover{color:#2980b9}"
+
+# Sous-titre d'un bloc de donnees dans un onglet : discret, mais assez marque
+# pour qu'on voie ou finit la liste de l'eau et ou commence la pression.
+BLOCK_TITLE = ("QLabel{color:#2c3e50;font-weight:bold;font-size:11px;"
+               "border-bottom:1px solid #d5dbdf;padding-top:6px}")
 BTN_CANCEL = (
     "QPushButton{background:#c0392b;color:#fff;border-radius:5px;"
     "font-weight:bold;font-size:11px}"
@@ -227,12 +232,22 @@ class BvlipDock(QDockWidget):
         self.tabs_options.setFixedHeight(TAB_HEIGHT)
         self.chk_datasets = {}
         self.info_datasets = {}
+        self.lbl_blocks = {}
         for tab in catalogue.TABS:
             page = QWidget()
             page_layout = QVBoxLayout()
             page_layout.setContentsMargins(8, 8, 8, 4)
             page_layout.setSpacing(4)
+            starts = catalogue.block_starts(tab)
             for key in catalogue.keys_of(tab):
+                if key in starts:
+                    # Sous-titre de bloc : la pression anthropique et la
+                    # biodiversite partagent l'onglet de l'eau et celui des
+                    # zonages sans en etre, et le lecteur doit le voir.
+                    heading = QLabel()
+                    heading.setStyleSheet(BLOCK_TITLE)
+                    self.lbl_blocks[starts[key]] = heading
+                    page_layout.addWidget(heading)
                 # Une case, puis un i discret cale a droite. La description
                 # complete ne peut pas tenir dans l'intitule - il en faudrait
                 # quatre lignes - et elle ne peut pas non plus etre passee
@@ -457,6 +472,8 @@ class BvlipDock(QDockWidget):
         for index, tab in enumerate(catalogue.TABS):
             self.tabs_options.setTabText(
                 index, tr(catalogue.tab_label_key(tab), lang))
+        for block, heading in self.lbl_blocks.items():
+            heading.setText(tr(catalogue.block_label_key(block), lang))
         for key, box in self.chk_datasets.items():
             box.setText(tr(catalogue.label_key(key), lang))
             # La meme description sur la case et sur son i : le survol de

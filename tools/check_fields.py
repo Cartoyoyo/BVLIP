@@ -158,6 +158,21 @@ def read_list(module, name, column=0):
     return []
 
 
+def read_dict_keys(module, name):
+    """Cles d'un dictionnaire de constantes declare en tete d'un module."""
+    path = os.path.join(PLUGIN_DIR, *module.split("/"))
+    with open(path, encoding="utf-8") as handle:
+        tree = ast.parse(handle.read())
+    for node in tree.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        target = node.targets[0]
+        if isinstance(target, ast.Name) and target.id == name:
+            return {key.value for key in node.value.keys
+                    if isinstance(key, ast.Constant)}
+    return set()
+
+
 def check_zonage_keys():
     """Le catalogue et la table des zonages doivent nommer les memes couches.
 
@@ -166,12 +181,17 @@ def check_zonage_keys():
     relie : une cle ajoutee d'un cote et oubliee de l'autre donnerait une
     case qui ne rapatrie rien, ou une couche qu'aucune case ne commande.
     Le defaut ne se verrait qu'a l'usage, sur un rapport incomplet.
+
+    Les donnees rangees sous un bloc de l'onglet - la biodiversite - en sont
+    ecartees, comme le fait core.datasets.ZONAGE_KEYS : ce ne sont pas des
+    zonages.
     """
+    blocks = read_dict_keys("core/datasets.py", "BLOCKS")
     catalogue = [key for key, tab, _on
                  in zip(read_list("core/datasets.py", "DATASETS", 0),
                         read_list("core/datasets.py", "DATASETS", 1),
                         read_list("core/datasets.py", "DATASETS", 2))
-                 if tab == "zonages"]
+                 if tab == "zonages" and key not in blocks]
     declared = read_list("core/protected.py", "ZONAGES", 0)
     problems = []
     for key in sorted(set(catalogue) - set(declared)):

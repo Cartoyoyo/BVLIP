@@ -28,6 +28,10 @@ DEFAULTS = (
     ("snap_radius", 50, int),
     ("thalweg_radius", 50, int),
     ("datasets", None, str),
+    # Cles que comptait le catalogue quand la selection a ete conservee :
+    # une donnee ajoutee depuis prend ainsi son etat par defaut au lieu de
+    # rester decochee. Voir core.datasets.from_setting.
+    ("datasets_known", None, str),
     ("language", "", str),
 )
 
@@ -76,12 +80,14 @@ def reset():
 def selected_datasets(values=None):
     """Ensemble des donnees choisies, tel qu'il a ete conserve."""
     values = values or load()
-    return catalogue.from_setting(values.get("datasets"))
+    return catalogue.from_setting(values.get("datasets"),
+                                  values.get("datasets_known"))
 
 
 def save_datasets(selection):
-    """Conserve la selection de donnees."""
-    save({"datasets": catalogue.to_setting(selection)})
+    """Conserve la selection de donnees, et les cles connues a cet instant."""
+    save({"datasets": catalogue.to_setting(selection),
+          "datasets_known": catalogue.known_setting()})
 
 
 def pipeline_options(values=None, **overrides):

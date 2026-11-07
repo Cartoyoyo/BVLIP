@@ -129,6 +129,9 @@ def prepared_layout(result, layers, progress=None):
                 "water_body": result.get("water_body"),
                 "groundwater": result.get("groundwater"),
                 "hydroecoregion": result.get("hydroecoregion"),
+                "gestion_eau": result.get("gestion_eau"),
+                "pressions": result.get("pressions"),
+                "biodiversite": result.get("biodiversite"),
             },
         )
         yield page, values, charts_paths, workdir
@@ -169,5 +172,6 @@ def build_report(result, layers, pdf_path, with_workbook=True, progress=None):
                 population=result.get("population"),
                 prelevements=result.get("prelevements"),
                 agriculture=result.get("agriculture"),
+                result=result,
             )
         return produced

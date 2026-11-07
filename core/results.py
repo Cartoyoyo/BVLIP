@@ -214,6 +214,19 @@ BASIN_FIELDS = [
      "Forêt de conifères (% de la surface)"),
     ("foret_mixt_pct", D, 6, 1, "foret.mixte_pct",
      "Forêt mixte (% de la surface)"),
+    # CarHab : la couverture est rendue a cote des parts, parce que la carte
+    # nationale n'est pas achevee - une part calculee sur un bassin couvert a
+    # moitie se lit autrement qu'une part sur un bassin couvert en entier.
+    ("chab_cov_pct", D, 6, 1, "carhab.couverture_pct",
+     "Couverture du bassin par CarHab (%)"),
+    ("chab_hum_ha", D, 12, 2, "carhab.humide_ha",
+     "Sols humides à aquatiques, CarHab (ha)"),
+    ("chab_hum_pct", D, 6, 1, "carhab.humide_pct",
+     "Sols humides à aquatiques, CarHab (%)"),
+    ("chab_dom", S, 80, 0, "carhab.dominante",
+     "Physionomie dominante (CarHab)"),
+    ("chab_dom_pct", D, 6, 1, "carhab.dominante_pct",
+     "Part de la physionomie dominante (%)"),
 
     # --- Agriculture declaree (PAC)
     ("rpg_ha", D, 12, 2, "agri.surface_ha",
@@ -264,6 +277,19 @@ BASIN_FIELDS = [
      "Aires AOC viticoles (ha)"),
     ("aoc_pct", D, 6, 2, "agri.aoc_pct",
      "Aires AOC viticoles (% de la surface)"),
+    # La densite se rapporte au bassin entier : voir agriculture.hedges.
+    ("haies_km", D, 12, 3, "haies.longueur_km",
+     "Linéaire de haies (km)"),
+    ("haies_dens", D, 8, 1, "haies.densite_m_ha",
+     "Densité de haies (m par ha de bassin)"),
+    ("haies_nb", INT, 10, 0, "haies.nb",
+     "Haies — nombre de tronçons"),
+    ("onf_ha", D, 12, 2, "onf.surface_ha",
+     "Forêts publiques ONF (ha)"),
+    ("onf_pct", D, 6, 2, "onf.part_pct",
+     "Forêts publiques ONF (% de la surface)"),
+    ("onf_nb", INT, 8, 0, "onf.nb",
+     "Forêts publiques ONF — nombre"),
 
     # --- Zonages environnementaux
     ("znieff1_ha", D, 12, 2, "zonages.znieff1_ha",
@@ -306,12 +332,34 @@ BASIN_FIELDS = [
      "Zones humides et tourbières BCAE (ha)"),
     ("zhumide_pct", D, 6, 1, "zonages.zhumide_pct",
      "Zones humides et tourbières BCAE (% de la surface)"),
+    ("cen_ha", D, 12, 2, "zonages.cen_ha",
+     "Conservatoire d'espaces naturels (ha)"),
+    ("cen_pct", D, 6, 1, "zonages.cen_pct",
+     "Conservatoire d'espaces naturels (% de la surface)"),
+    ("compens_ha", D, 12, 2, "zonages.compens_ha",
+     "Mesures compensatoires (ha)"),
+    ("compens_pct", D, 6, 1, "zonages.compens_pct",
+     "Mesures compensatoires (% de la surface)"),
+    ("autres_ha", D, 12, 2, "zonages.autres_ha",
+     "Autres protections (ha)"),
+    ("autres_pct", D, 6, 1, "zonages.autres_pct",
+     "Autres protections (% de la surface)"),
+    ("zhim_ha", D, 12, 2, "zonages.zhim_ha",
+     "Zones humides d'importance majeure (ha)"),
+    ("zhim_pct", D, 6, 1, "zonages.zhim_pct",
+     "Zones humides d'importance majeure (% de la surface)"),
     ("zonage_ha", D, 12, 2, "zonages.total_ha",
      "Total sous zonage, sans double compte (ha)"),
     ("zonage_pct", D, 6, 1, "zonages.total_pct",
      "Total sous zonage, sans double compte (%)"),
     ("zonage_nb", INT, 8, 0, "zonages.nb_sites",
      "Nombre de sites de zonage recoupant le bassin"),
+
+    # --- Biodiversite observee (GBIF)
+    ("gbif_obs_nb", INT, 10, 0, "gbif.observations",
+     "Observations naturalistes GBIF — nombre"),
+    ("gbif_esp_nb", INT, 8, 0, "gbif.especes",
+     "Espèces observées GBIF — nombre"),
 
     # --- Masse d'eau DCE
     ("me_code_eu", S, 20, 0, "masse_eau.code_eu",
@@ -340,6 +388,32 @@ BASIN_FIELDS = [
      "Hydroécorégion de niveau 2 — code"),
     ("her2_nom", S, 120, 0, "her.her2_nom",
      "Hydroécorégion de niveau 2"),
+
+    # --- Gestion de l'eau
+    ("sage_nom", S, 200, 0, "sage.noms",
+     "SAGE couvrant le bassin"),
+    ("sage_pct", D, 6, 1, "sage.part_pct",
+     "Bassin couvert par un SAGE (%)"),
+    ("vigi_km", D, 10, 3, "vigicrues.longueur_km",
+     "Cours d'eau surveillés par Vigicrues (km)"),
+    ("vigi_st_nb", INT, 6, 0, "vigicrues.nb_stations",
+     "Stations Vigicrues — nombre"),
+    ("aep_nb", INT, 8, 0, "prelevements.nb_aep",
+     "Ouvrages de prélèvement pour l'eau potable — nombre"),
+    ("aep_vol_m3", D, 14, 0, "prelevements.volume_aep_m3",
+     "Prélèvements pour l'eau potable (m³/an)"),
+
+    # --- Pression anthropique (Georisques)
+    ("basias_nb", INT, 8, 0, "pressions.basias_nb",
+     "Anciens sites industriels BASIAS — nombre"),
+    ("basol_nb", INT, 8, 0, "pressions.basol_nb",
+     "Sites pollués BASOL — nombre"),
+    ("sis_nb", INT, 8, 0, "pressions.sis_nb",
+     "Secteurs d'information sur les sols — nombre"),
+    ("sis_ha", D, 10, 2, "pressions.sis_ha",
+     "Secteurs d'information sur les sols (ha)"),
+    ("irep_nb", INT, 8, 0, "pressions.irep_nb",
+     "Établissements déclarant leurs rejets IREP — nombre"),
 
     # --- Provenance de l'exutoire
     ("x_exutoire", D, 12, 2, "identite.x_exutoire",
@@ -523,6 +597,69 @@ RPG_FIELDS = [
     ("nature", S, 20, 0, None, "Nature : herbe ou culture"),
     ("surface_ha", D, 12, 4, None, "Surface dans le bassin (ha)"),
     ("part_pct", D, 6, 3, None, "Part du bassin (%)"),
+]
+
+# Haies du dispositif de suivi des bocages, un troncon par entite, decoupe
+# sur le bassin. Le service ne renseigne ni hauteur ni largeur sur la quasi-
+# totalite des troncons : seule la longueur est reprise.
+HAIE_FIELDS = [
+    ("id_bv", S, 40, 0, None, "Identifiant du bassin"),
+    ("longueur_m", D, 12, 1, None, "Longueur dans le bassin (m)"),
+]
+
+# Forets publiques relevant du regime forestier.
+ONF_FIELDS = [
+    ("id_bv", S, 40, 0, None, "Identifiant du bassin"),
+    ("code", S, 20, 0, None, "Identifiant ONF de la forêt"),
+    ("nom", S, 200, 0, None, "Nom de la forêt"),
+    ("statut", S, 20, 0, None, "Domaniale ou de collectivité"),
+    ("surface_ha", D, 12, 2, None, "Surface dans le bassin (ha)"),
+    ("part_pct", D, 6, 2, None, "Part du bassin (%)"),
+]
+
+# Habitats CarHab, un polygone par habitat decoupe sur le bassin.
+HABITAT_FIELDS = [
+    ("id_bv", S, 40, 0, None, "Identifiant du bassin"),
+    ("physio", S, 80, 0, None, "Physionomie de la végétation"),
+    ("humidite", S, 60, 0, None, "Humidité du sol"),
+    ("acidite", S, 40, 0, None, "Acidité du sol"),
+    ("surface_ha", D, 12, 4, None, "Surface dans le bassin (ha)"),
+]
+
+# Troncons de cours d'eau surveilles par Vigicrues, et leurs stations.
+VIGI_FIELDS = [
+    ("id_bv", S, 40, 0, None, "Identifiant du bassin"),
+    ("code", S, 20, 0, None, "Code Vigicrues du tronçon"),
+    ("nom", S, 120, 0, None, "Tronçon surveillé"),
+    ("longueur_m", D, 12, 1, None, "Longueur dans le bassin (m)"),
+]
+VIGI_STATION_FIELDS = [
+    ("id_bv", S, 40, 0, None, "Identifiant du bassin"),
+    ("code", S, 20, 0, None, "Code de la station"),
+    ("nom", S, 120, 0, None, "Nom de la station"),
+    ("cours_eau", S, 120, 0, None, "Cours d'eau mesuré"),
+]
+
+# Sites de la pression anthropique : anciens sites industriels, sites
+# pollues et etablissements declarant leurs rejets, un point par site. Les
+# secteurs d'information sur les sols, qui sont des surfaces, ont leur
+# propre couche.
+SITE_FIELDS = [
+    ("id_bv", S, 40, 0, None, "Identifiant du bassin"),
+    ("inventaire", S, 10, 0, None, "Inventaire : basias, basol ou irep"),
+    ("type", S, 60, 0, None, "Nature du site"),
+    ("code", S, 40, 0, None, "Code dans l'inventaire"),
+    ("nom", S, 200, 0, None, "Nom de l'établissement"),
+    ("etat", S, 80, 0, None, "État, statut ou code d'activité"),
+    ("commune", S, 120, 0, None, "Commune"),
+    ("fiche", S, 254, 0, None, "Fiche descriptive en ligne"),
+]
+SIS_FIELDS = [
+    ("id_bv", S, 40, 0, None, "Identifiant du bassin"),
+    ("code", S, 40, 0, None, "Code du secteur"),
+    ("nom", S, 200, 0, None, "Nom du secteur"),
+    ("commune", S, 120, 0, None, "Commune"),
+    ("surface_ha", D, 12, 4, None, "Surface dans le bassin (ha)"),
 ]
 
 OUTLET_FIELDS = [
@@ -759,6 +896,17 @@ def flatten_protected(protected):
     return values
 
 
+def flatten_pressions(pressions):
+    """Un compte par inventaire de Georisques, et la surface des SIS."""
+    values = {}
+    for key in ("basias", "basol", "sis", "irep"):
+        inventaire = (pressions or {}).get(key)
+        values[key + "_nb"] = None if inventaire is None else inventaire["nb"]
+    sis = (pressions or {}).get("sis") or {}
+    values["sis_ha"] = sis.get("surface_ha")
+    return values
+
+
 # Maille la plus fine que le service sache servir en natif ; au-dela, le
 # resultat est un reechantillonnage.
 FINEST_RESOLUTION = 5.0
@@ -769,7 +917,8 @@ def build_attributes(delineation_result, network_result, click_point,
                      land_cover=None, refined=None, protected=None,
                      structures=None, groundwater=None, hydroecoregion=None,
                      agriculture=None, steu=None, prelevements=None,
-                     population=None):
+                     population=None, gestion_eau=None, pressions=None,
+                     biodiversite=None):
     """Assemble les valeurs des champs du bassin, par groupe de provenance."""
     basin_id = basin_id or datetime.now().strftime("BV_%Y%m%d_%H%M%S")
     stream = network_result.get("stream") or {}
@@ -844,6 +993,13 @@ def build_attributes(delineation_result, network_result, click_point,
         "steu": steu or {},
         "prelevements": prelevements or {},
         "population": population or {},
+        "carhab": (land_cover or {}).get("carhab") or {},
+        "haies": (agriculture or {}).get("haies") or {},
+        "onf": (agriculture or {}).get("onf") or {},
+        "gbif": biodiversite or {},
+        "sage": (gestion_eau or {}).get("sage") or {},
+        "vigicrues": (gestion_eau or {}).get("vigicrues") or {},
+        "pressions": flatten_pressions(pressions),
     }, basin_id
 
 
@@ -1070,6 +1226,97 @@ def zonage_features(fields, protected, basin_id):
         yield feature
 
 
+def _shape_features(fields, items, basin_id, mapping):
+    """Une entite par element porteur d'une geometrie.
+
+    mapping associe chaque champ de la couche a la cle de l'element qui le
+    renseigne.
+    """
+    for item in items or ():
+        geometry = item.get("geometrie")
+        if geometry is None or geometry.isEmpty():
+            continue
+        feature = QgsFeature(fields)
+        feature.setGeometry(QgsGeometry(geometry))
+        feature["id_bv"] = basin_id
+        for field, key in mapping:
+            feature[field] = item.get(key)
+        yield feature
+
+
+def _point_features(fields, items, basin_id, mapping):
+    """Une entite ponctuelle par element porteur de x et y."""
+    for item in items or ():
+        if item.get("x") is None or item.get("y") is None:
+            continue
+        feature = QgsFeature(fields)
+        feature.setGeometry(
+            QgsGeometry.fromPointXY(QgsPointXY(item["x"], item["y"])))
+        feature["id_bv"] = basin_id
+        for field, key in mapping:
+            feature[field] = item.get(key)
+        yield feature
+
+
+def haie_features(fields, agriculture, basin_id):
+    lignes = ((agriculture or {}).get("haies") or {}).get("lignes")
+    return _shape_features(fields, lignes, basin_id,
+                           (("longueur_m", "longueur_m"),))
+
+
+def onf_features(fields, agriculture, basin_id):
+    forets = ((agriculture or {}).get("onf") or {}).get("forets")
+    return _shape_features(fields, forets, basin_id, (
+        ("code", "code"), ("nom", "nom"), ("statut", "statut"),
+        ("surface_ha", "surface_ha"), ("part_pct", "part_pct"),
+    ))
+
+
+def habitat_features(fields, land_cover, basin_id):
+    polygones = ((land_cover or {}).get("carhab") or {}).get("polygones")
+    return _shape_features(fields, polygones, basin_id, (
+        ("physio", "physionomie"), ("humidite", "humidite"),
+        ("acidite", "acidite"), ("surface_ha", "surface_ha"),
+    ))
+
+
+def vigicrues_features(fields, gestion_eau, basin_id):
+    vigi = (gestion_eau or {}).get("vigicrues") or {}
+    for feature in _shape_features(fields, vigi.get("lignes"), basin_id, (
+            ("code", "code"), ("nom", "nom"))):
+        feature["longueur_m"] = feature.geometry().length()
+        yield feature
+
+
+def vigicrues_station_features(fields, gestion_eau, basin_id):
+    vigi = (gestion_eau or {}).get("vigicrues") or {}
+    return _point_features(fields, vigi.get("stations"), basin_id, (
+        ("code", "code"), ("nom", "nom"), ("cours_eau", "cours_d_eau"),
+    ))
+
+
+def site_features(fields, pressions, basin_id):
+    """Un point par site BASIAS, BASOL ou IREP, dans l'ordre des inventaires."""
+    from .pressions import LABELS
+
+    for key in ("basias", "basol", "irep"):
+        sites = ((pressions or {}).get(key) or {}).get("sites") or []
+        for feature in _point_features(fields, sites, basin_id, (
+                ("inventaire", "inventaire"), ("code", "code"),
+                ("nom", "nom"), ("etat", "etat"), ("commune", "commune"),
+                ("fiche", "fiche"))):
+            feature["type"] = LABELS.get(key)
+            yield feature
+
+
+def sis_features(fields, pressions, basin_id):
+    sites = ((pressions or {}).get("sis") or {}).get("sites")
+    return _shape_features(fields, sites, basin_id, (
+        ("code", "code"), ("nom", "nom"), ("commune", "commune"),
+        ("surface_ha", "surface_ha"),
+    ))
+
+
 def stream_features(fields, upstream, basin_id):
     """Un troncon par entite, avec ses attributs BD TOPO utiles.
 
@@ -1107,6 +1354,9 @@ def build_layers(result, click_point, basin_id=None):
         result.get("groundwater"), result.get("hydroecoregion"),
         result.get("agriculture"), result.get("steu"),
         result.get("prelevements"), result.get("population"),
+        gestion_eau=result.get("gestion_eau"),
+        pressions=result.get("pressions"),
+        biodiversite=result.get("biodiversite"),
     )
 
     basin = _memory_layer("Polygon", "Bassin versant", BASIN_FIELDS)
@@ -1124,7 +1374,35 @@ def build_layers(result, click_point, basin_id=None):
     layers = {"bassin": basin, "exutoire": outlets, "reseau": None,
               "zonages": None, "parcelles": None, "foret": None,
               "bio": None, "obstacles": None, "steu": None,
-              "prelevements": None}
+              "prelevements": None, "haies": None, "onf": None,
+              "carhab": None, "vigicrues": None, "vigi_stations": None,
+              "sites": None, "sis": None}
+
+    # Couches thematiques decrites en table : (cle, type, nom, champs,
+    # constructeur, partie du resultat). Comme les autres, une couche sans
+    # entite n'est pas creee.
+    for key, kind, name, definition, builder, part in (
+        ("haies", "MultiLineString", "Haies", HAIE_FIELDS,
+         haie_features, "agriculture"),
+        ("onf", "MultiPolygon", "Forêts publiques (ONF)", ONF_FIELDS,
+         onf_features, "agriculture"),
+        ("carhab", "MultiPolygon", "Habitats CarHab", HABITAT_FIELDS,
+         habitat_features, "land_cover"),
+        ("vigicrues", "MultiLineString", "Tronçons Vigicrues", VIGI_FIELDS,
+         vigicrues_features, "gestion_eau"),
+        ("vigi_stations", "Point", "Stations Vigicrues",
+         VIGI_STATION_FIELDS, vigicrues_station_features, "gestion_eau"),
+        ("sites", "Point", "Sites pollués et industriels", SITE_FIELDS,
+         site_features, "pressions"),
+        ("sis", "MultiPolygon", "Secteurs d'information sur les sols",
+         SIS_FIELDS, sis_features, "pressions"),
+    ):
+        layer = _memory_layer(kind, name, definition)
+        features = list(builder(layer.fields(), result.get(part), basin_id))
+        if features:
+            layer.dataProvider().addFeatures(features)
+            layer.updateExtents()
+            layers[key] = layer
 
     # Obstacles a l'ecoulement, si le ROE a ete interroge.
     roe_layer = _memory_layer("Point", "Obstacles à l'écoulement (ROE)",
@@ -1250,6 +1528,14 @@ def style_layers(layers):
 
     if layers.get("prelevements") is not None:
         _style_prelevements(layers["prelevements"])
+
+    for key, styler in (("haies", _style_haies), ("onf", _style_onf),
+                        ("carhab", _style_carhab),
+                        ("vigicrues", _style_vigicrues),
+                        ("vigi_stations", _style_vigi_stations),
+                        ("sites", _style_sites), ("sis", _style_sis)):
+        if layers.get(key) is not None:
+            styler(layers[key])
 
     # Les quatre etats de l'exutoire se distinguent au premier coup d'oeil :
     # c'est ce qui permet de voir d'un regard de combien le point a bouge.
@@ -1577,6 +1863,160 @@ def _style_prelevements(layer):
     layer.setRenderer(QgsSingleSymbolRenderer(symbol))
 
 
+def _style_haies(layer):
+    """Un trait vert sombre, assez fin pour laisser lire la trame bocagere."""
+    from qgis.core import QgsLineSymbol, QgsSingleSymbolRenderer
+
+    symbol = QgsLineSymbol.createSimple({"color": "#2e6b2f", "width": "0.3"})
+    layer.setRenderer(QgsSingleSymbolRenderer(symbol))
+
+
+def _style_onf(layer):
+    """Contour brun et hachure legere, sans aplat.
+
+    Une foret publique est une propriete, pas un couvert : elle se pose sur
+    les formations de la BD Foret et les parcelles sans leur prendre leur
+    couleur, comme les parcelles bio sur le RPG.
+    """
+    from qgis.core import (
+        QgsFillSymbol, QgsLinePatternFillSymbolLayer, QgsSingleSymbolRenderer,
+    )
+    from qgis.PyQt.QtGui import QColor
+
+    symbol = QgsFillSymbol.createSimple({
+        "style": "no", "outline_color": "#795548",
+        "outline_width": "0.5", "outline_style": "dash",
+    })
+    hachure = QgsLinePatternFillSymbolLayer()
+    hachure.setLineAngle(30.0)
+    hachure.setDistance(2.4)
+    hachure.setLineWidth(0.2)
+    hachure.setColor(QColor("#a1887f"))
+    symbol.appendSymbolLayer(hachure)
+    layer.setRenderer(QgsSingleSymbolRenderer(symbol))
+
+
+# Humidite du sol CarHab, du plus sec au plus mouille : des tons de paille
+# aux bleus. La carte doit se lire comme une carte des zones humides
+# potentielles, sans aller chercher la legende. Rapprochement sur le debut du
+# libelle, dans l'ordre : "legerement humide" doit passer avant "humide".
+CARHAB_COLORS = (
+    ("très sec", "#d9c27a"),
+    ("sec", "#e3d29a"),
+    ("assez sec", "#ece0b4"),
+    ("mésique", "#cfe3b5"),
+    ("légèrement humide", "#a8d8d0"),
+    ("humide", "#4fa3d1"),
+    ("détrempé", "#2f7fbf"),
+    ("aquatique", "#1f5f99"),
+)
+CARHAB_DEFAULT = "#bdbdbd"
+
+
+def carhab_color(humidite):
+    plat = str(humidite or "").lower()
+    for debut, couleur in CARHAB_COLORS:
+        if plat.startswith(debut):
+            return couleur
+    return CARHAB_DEFAULT
+
+
+def _style_carhab(layer):
+    """Une teinte par humidite du sol, du sec au bleu."""
+    from qgis.core import (
+        QgsCategorizedSymbolRenderer, QgsFillSymbol, QgsRendererCategory,
+    )
+
+    surfaces = {}
+    for feature in layer.getFeatures():
+        nom = feature["humidite"]
+        surfaces[nom] = surfaces.get(nom, 0.0) + (feature["surface_ha"] or 0.0)
+    if not surfaces:
+        return
+    ordre = [debut for debut, _c in CARHAB_COLORS]
+
+    def rang(nom):
+        plat = str(nom or "").lower()
+        for index, debut in enumerate(ordre):
+            if plat.startswith(debut):
+                return index
+        return len(ordre)
+
+    courts = unique_short_labels(surfaces)
+    categories = []
+    for nom in sorted(surfaces, key=lambda n: (rang(n), str(n))):
+        symbol = QgsFillSymbol.createSimple({
+            "color": carhab_color(nom),
+            "outline_color": "255,255,255,90",
+            "outline_width": "0.08",
+            "outline_style": "solid",
+        })
+        categories.append(QgsRendererCategory(nom, symbol, courts[nom]))
+    layer.setRenderer(QgsCategorizedSymbolRenderer("humidite", categories))
+    layer.setOpacity(0.8)
+
+
+def _style_vigicrues(layer):
+    """Trait epais bleu canard, pose sous le chevelu fin du reseau amont."""
+    from qgis.core import QgsLineSymbol, QgsSingleSymbolRenderer
+
+    symbol = QgsLineSymbol.createSimple({
+        "color": "0,131,143,170", "width": "1.4", "capstyle": "round",
+    })
+    layer.setRenderer(QgsSingleSymbolRenderer(symbol))
+
+
+def _style_vigi_stations(layer):
+    from qgis.core import QgsMarkerSymbol, QgsSingleSymbolRenderer
+
+    symbol = QgsMarkerSymbol.createSimple({
+        "name": "triangle", "color": "#00636f", "outline_color": "white",
+        "outline_width": "0.3", "size": "3.2",
+    })
+    layer.setRenderer(QgsSingleSymbolRenderer(symbol))
+
+
+# Sites de la pression anthropique : une forme et une couleur par
+# inventaire. Le BASOL, ou la pollution est averee, est le plus voyant.
+SITE_STYLES = (
+    ("basias", "circle", "#8d6e63", 2.0),
+    ("basol", "diamond", "#c62828", 3.2),
+    ("irep", "square", "#6a4c93", 2.8),
+)
+
+
+def _style_sites(layer):
+    from qgis.core import (
+        QgsCategorizedSymbolRenderer, QgsMarkerSymbol, QgsRendererCategory,
+    )
+
+    from .pressions import LABELS
+
+    presents = {feature["inventaire"] for feature in layer.getFeatures()}
+    categories = []
+    for key, shape, color, size in SITE_STYLES:
+        if key not in presents:
+            continue
+        symbol = QgsMarkerSymbol.createSimple({
+            "name": shape, "color": color, "outline_color": "white",
+            "outline_width": "0.3", "size": str(size),
+        })
+        categories.append(QgsRendererCategory(key, symbol, LABELS[key]))
+    if categories:
+        layer.setRenderer(
+            QgsCategorizedSymbolRenderer("inventaire", categories))
+
+
+def _style_sis(layer):
+    from qgis.core import QgsFillSymbol, QgsSingleSymbolRenderer
+
+    symbol = QgsFillSymbol.createSimple({
+        "color": "198,40,40,70", "outline_color": "#8b0000",
+        "outline_width": "0.4", "outline_style": "solid",
+    })
+    layer.setRenderer(QgsSingleSymbolRenderer(symbol))
+
+
 def _style_bio(layer):
     """Hachures sur les parcelles engagees en bio, sans fond.
 
@@ -1785,10 +2225,15 @@ def _label_streams(layer):
 # aucune couche a montrer n'est pas cree.
 LAYER_GROUPS = (
     (None, ("exutoire",)),
-    ("Hydrographie", ("steu", "prelevements", "obstacles", "reseau")),
+    ("Hydrographie", ("vigi_stations", "obstacles", "reseau", "vigicrues")),
+    ("Pression anthropique", ("sites", "steu", "prelevements", "sis")),
     ("Zonages environnementaux", ("zonages",)),
-    ("Agriculture", ("bio", "parcelles")),
-    ("Occupation du sol", ("foret",)),
+    ("Agriculture", ("haies", "bio", "onf", "parcelles")),
+    # CarHab au-dessus de la BD Foret, et non dessous : elle couvre tout le
+    # bassin, et posee sous les formations forestieres - opaques a quatre
+    # cinquiemes - elle n'apparaissait nulle part sur la carte, alors que
+    # c'est une donnee que l'utilisateur a du cocher expres.
+    ("Occupation du sol", ("carhab", "foret")),
     (None, ("bassin",)),
 )
 

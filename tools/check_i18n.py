@@ -73,6 +73,11 @@ def catalogue_keys():
             for element in node.value.elts:
                 keys.add("ds_" + element.elts[0].value)
                 keys.add("dsinfo_" + element.elts[0].value)
+        elif target.id == "BLOCKS":
+            # Un sous-titre par bloc, nomme par la valeur et non par la cle.
+            keys.update("dsblock_" + value.value
+                        for value in node.value.values
+                        if isinstance(value, ast.Constant))
     return keys
 
 

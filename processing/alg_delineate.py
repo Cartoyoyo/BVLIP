@@ -287,6 +287,11 @@ class DelineateWatershedAlgorithm(QgsProcessingAlgorithm):
                 result["land_cover"], result.get("affinage"),
                 result.get("protected"), result.get("structures"),
                 result.get("groundwater"), result.get("hydroecoregion"),
+                result.get("agriculture"), result.get("steu"),
+                result.get("prelevements"), result.get("population"),
+                gestion_eau=result.get("gestion_eau"),
+                pressions=result.get("pressions"),
+                biodiversite=result.get("biodiversite"),
             )
             sink.addFeature(
                 results.basin_feature(

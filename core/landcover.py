@@ -26,12 +26,35 @@ import json
 
 from qgis.core import QgsGeometry, QgsJsonUtils
 
-from .geoservices import GeoserviceError, wfs_pages
+from .clip import PreparedBasin, geometry_of
+from .geoservices import GeoserviceError, wfs_pages, wfs_pages_parallel
 
 LAYER_CLC = "LANDCOVER.CLC18_FR:clc18_fr"
 LAYER_BUILDINGS = "BDTOPO_V3:batiment"
 LAYER_SETTLEMENTS = "BDTOPO_V3:zone_d_habitation"
 LAYER_FOREST = "LANDCOVER.FORESTINVENTORY.V2:formation_vegetale"
+LAYER_CARHAB = "Carhab_habitat:habitats_carhab"
+
+# Attributs CarHab demandes au service. La couche en porte une trentaine,
+# dont des phrases de commentaire : ne faire voyager que ceux-la allege la
+# page d'un cinquieme.
+CARHAB_FIELDS = ("nom_physio", "humidite_edaphique", "acidite_edaphique",
+                 "geom")
+
+# Polygones CarHab gardes avec leur forme pour la couche QGIS. Les parts,
+# elles, portent toujours sur tous les polygones du bassin.
+MAX_CARHAB_COUCHE = 100000
+
+# Humidite du sol reputee humide au sens de CarHab : les sols a nappe, les
+# sols detrempes et les milieux aquatiques ou amphibies. "Legerement humide"
+# n'en est pas - le referentiel le distingue lui-meme - et figure a part dans
+# le detail. "Detrempe a nappe stagnante" a ete releve sur la Montagne
+# bourbonnaise, a pres d'un dixieme de la surface : l'oublier aurait divise
+# la part de sols humides par deux.
+CARHAB_HUMIDE = ("humide", "détrempé", "aquatique")
+
+CARHAB_SOURCE = ("CarHab — cartographie nationale des habitats (PatriNat / "
+                 "IGN / OFB), couverture nationale encore incomplète")
 
 # Regroupement des formations de la BD Foret v2 en trois grands peuplements.
 #
@@ -346,8 +369,90 @@ def forest(basin, progress=None):
     return result
 
 
+def _shares(by_label, total):
+    return [
+        {"libelle": name, "surface_ha": area / 1e4,
+         "part_pct": 100.0 * area / total if total else None}
+        for name, area in sorted(by_label.items(), key=lambda kv: -kv[1])
+    ]
+
+
+def carhab(basin, progress=None):
+    """Habitats CarHab : physionomie de la vegetation et humidite du sol.
+
+    Ce que CarHab ajoute a Corine et a la BD Foret, c'est le sol : chaque
+    polygone porte une humidite edaphique, du sec a l'aquatique, si bien que
+    la part de sols humides du bassin - ses zones humides potentielles - se
+    lit directement. La physionomie, elle, distingue la prairie fauchee de la
+    prairie paturee, ce que Corine ne sait pas faire.
+
+    La couverture nationale n'est pas achevee : un departement entier peut
+    manquer. Un bassin hors couverture rend donc zero polygone, ce qui ne veut
+    pas dire zero habitat ; la couverture atteinte est rendue pour que le
+    rapport le dise.
+    """
+    if progress:
+        progress("Habitats CarHab...")
+    prepared = PreparedBasin(basin)
+    total = prepared.area
+    if total <= 0:
+        raise LandCoverError("Bassin de surface nulle.")
+
+    by_physio = {}
+    by_humidite = {}
+    polygones = []
+    nombre = 0
+    for page in wfs_pages_parallel(LAYER_CARHAB, bbox=_bbox(basin),
+                                   properties=CARHAB_FIELDS, timeout=120):
+        for feature in page:
+            clipped = prepared.clip(geometry_of(feature))
+            if clipped is None:
+                continue
+            area = clipped.area()
+            if area <= 0:
+                continue
+            properties = feature.get("properties") or {}
+            physio = str(properties.get("nom_physio") or "").strip() \
+                or "Physionomie non renseignée"
+            humidite = str(properties.get("humidite_edaphique") or "").strip() \
+                or "Humidité non renseignée"
+            by_physio[physio] = by_physio.get(physio, 0.0) + area
+            by_humidite[humidite] = by_humidite.get(humidite, 0.0) + area
+            nombre += 1
+            if len(polygones) < MAX_CARHAB_COUCHE:
+                polygones.append({
+                    "physionomie": physio,
+                    "humidite": humidite,
+                    "acidite": str(properties.get("acidite_edaphique")
+                                   or "").strip() or None,
+                    "surface_ha": area / 1e4,
+                    "geometrie": clipped,
+                })
+        del page
+        if progress:
+            progress("Habitats CarHab : {0} polygone(s)...".format(nombre))
+
+    covered = sum(by_physio.values())
+    humide = sum(area for name, area in by_humidite.items()
+                 if name.lower().startswith(CARHAB_HUMIDE))
+    physionomies = _shares(by_physio, total)
+    return {
+        "nb": nombre,
+        "couverture_pct": 100.0 * covered / total,
+        "humide_pct": 100.0 * humide / total if covered else None,
+        "humide_ha": humide / 1e4 if covered else None,
+        "physionomies": physionomies,
+        "humidites": _shares(by_humidite, total),
+        "dominante": physionomies[0]["libelle"] if physionomies else None,
+        "dominante_pct": physionomies[0]["part_pct"] if physionomies else None,
+        "polygones": polygones,
+        "couche_tronquee": nombre > len(polygones),
+        "source": CARHAB_SOURCE,
+    }
+
+
 def compute(basin, with_corine=True, with_built_up=True, with_forest=True,
-            progress=None):
+            with_carhab=False, progress=None):
     """Occupation du sol complete du bassin.
 
     Les trois sources se demandent separement : elles repondent a des
@@ -358,7 +463,12 @@ def compute(basin, with_corine=True, with_built_up=True, with_forest=True,
     Une source indisponible ne fait pas echouer l'ensemble : la partie
     manquante est renvoyee a None et le reste du rapport reste produit.
     """
-    values = {"corine": None, "bati": None, "foret": None}
+    values = {"corine": None, "bati": None, "foret": None, "carhab": None}
+    if with_carhab:
+        try:
+            values["carhab"] = carhab(basin, progress)
+        except (GeoserviceError, LandCoverError) as exc:
+            values["carhab_erreur"] = str(exc)
     if with_corine:
         try:
             values["corine"] = corine(basin, progress)

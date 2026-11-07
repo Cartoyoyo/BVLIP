@@ -242,10 +242,10 @@ def build_layout(project, layers, values, charts_paths, title=None,
     # toute la largeur et viendrait se poser sur "Produit par BVLIP". Deux
     # lignes en dessous de la marge valent mieux qu'un chevauchement.
     _label(layout,
-           "Sources : RGE ALTI, BD TOPO et BD Forêt v2 (IGN) · Corine Land "
-           "Cover 2018 · zonages INPN / Patrinat · masses d'eau, "
-           "hydroécorégions, ROE et STEU (Sandre) · prélèvements (Hub'Eau) · "
-           "fond Plan IGN v2",
+           "Sources : RGE ALTI, BD TOPO, BD Forêt v2 et haies (IGN) · Corine "
+           "Land Cover 2018 · zonages INPN / Patrinat · Sandre · Hub'Eau · "
+           "Vigicrues · Géorisques · GBIF · fond Plan IGN v2 — détail en "
+           "dernière page",
            MARGIN, A4_HEIGHT - 15, A4_WIDTH - 2 * MARGIN - 34, 9,
            size=6.5, color=GRIS)
     _label(layout, "Produit par BVLIP", A4_WIDTH - MARGIN - 32,
@@ -268,6 +268,13 @@ def build_layout(project, layers, values, charts_paths, title=None,
             "steu": layers.get("steu"),
             "prelevements": layers.get("prelevements"),
             "reseau": layers.get("reseau"),
+            "carhab": layers.get("carhab"),
+            "haies": layers.get("haies"),
+            "onf": layers.get("onf"),
+            "vigicrues": layers.get("vigicrues"),
+            "vigi_stations": layers.get("vigi_stations"),
+            "sites": layers.get("sites"),
+            "sis": layers.get("sis"),
         },
     )
     _build_sources_page(layout, title)
@@ -444,6 +451,96 @@ PRELEVEMENT_COLUMNS = (
     (166.0, 20.0, False),    # commune
 )
 
+# Forets publiques : nom, statut, surface, part.
+ONF_COLUMNS = (
+    (0.0, 108.0, False),
+    (109.0, 40.0, False),
+    (150.0, 18.0, True),
+    (169.0, 17.0, True),
+)
+
+# Biodiversite observee : groupe, observations, especes.
+GBIF_COLUMNS = (
+    (0.0, 110.0, False),
+    (112.0, 36.0, True),
+    (150.0, 36.0, True),
+)
+
+# SAGE : code, nom, etat, surface, part.
+SAGE_COLUMNS = (
+    (0.0, 24.0, False),
+    (25.0, 88.0, False),
+    (114.0, 32.0, False),
+    (147.0, 20.0, True),
+    (168.0, 18.0, True),
+)
+
+# Troncons Vigicrues : code, nom, longueur dans le bassin.
+VIGI_COLUMNS = (
+    (0.0, 24.0, False),
+    (25.0, 120.0, False),
+    (146.0, 40.0, True),
+)
+
+# Sites de Georisques : code, nom, etat ou statut, commune.
+SITE_COLUMNS = (
+    (0.0, 26.0, False),
+    (27.0, 66.0, False),
+    (94.0, 46.0, False),
+    (141.0, 45.0, False),
+)
+
+
+# Theme de chaque titre de section des pages de detail : (theme, couleur).
+#
+# La couleur ne fait qu'un filet sous le titre, le titre lui-meme restant
+# ardoise : la mise en page garde sa sobriete, et le filet suffit a dire, en
+# feuilletant, ou commence l'agriculture et ou finit l'eau. Ce sont les
+# couleurs des tuiles de la synthese du classeur. Une section absente de la
+# table - celles que la page 1 reporte - garde un filet gris.
+SECTION_THEMES = {
+    "Occupation du sol": ("Occupation du sol", "#8d6e63"),
+    "Habitats CarHab — humidité du sol": ("Occupation du sol", "#8d6e63"),
+    "Agriculture déclarée (PAC)": ("Agriculture", "#5d8c3a"),
+    "Haies et forêts publiques": ("Agriculture", "#5d8c3a"),
+    "Zonages environnementaux": ("Nature et biodiversité", "#2e9e5b"),
+    "Biodiversité observée (GBIF)": ("Nature et biodiversité", "#2e9e5b"),
+    "Masses d'eau et hydroécorégion": ("Eau", "#1f6fa3"),
+    "Schéma d'aménagement et de gestion des eaux (SAGE)": ("Eau", "#1f6fa3"),
+    "Surveillance des crues (Vigicrues)": ("Eau", "#1f6fa3"),
+    "Eau potable": ("Eau", "#1f6fa3"),
+    "Sites hydrométriques": ("Eau", "#1f6fa3"),
+    "Obstacles à l'écoulement (ROE)": ("Obstacles à l'écoulement", "#607d8b"),
+    "Pression anthropique": ("Pression anthropique", "#b5452f"),
+    "Population estimée": ("Pression anthropique", "#b5452f"),
+    "Stations de traitement des eaux usées (STEU)": (
+        "Pression anthropique", "#b5452f"),
+    "Prélèvements d'eau": ("Pression anthropique", "#b5452f"),
+    "Sols pollués et rejets industriels (Géorisques)": (
+        "Pression anthropique", "#b5452f"),
+}
+SECTION_RULE_DEFAULT = "#bdc3c7"
+
+# Fond d'une rangee sur deux dans les tableaux : a peine perceptible a
+# l'ecran, il suffit sur papier a suivre une ligne de cent quatre-vingt-six
+# millimetres sans glisser sur la voisine.
+ZEBRA = "244,246,247,255"
+
+
+def _rectangle(layout, x, y, width, height, color, page):
+    """Aplat sans contour, pose sous ce qu'on ecrira ensuite par-dessus."""
+    from qgis.core import QgsLayoutItemShape
+
+    shape = QgsLayoutItemShape(layout)
+    shape.setShapeType(QgsLayoutItemShape.Shape.Rectangle)
+    shape.setSymbol(QgsFillSymbol.createSimple({
+        "color": color, "outline_style": "no",
+    }))
+    layout.addLayoutItem(shape)
+    shape.attemptMove(QgsLayoutPoint(x, y, MM), True, False, page)
+    shape.attemptResize(QgsLayoutSize(width, height, MM))
+    return shape
+
 
 class _Cursor:
     """Curseur d'ecriture sur les pages de detail, qu'il cree au besoin.
@@ -480,6 +577,11 @@ class _Cursor:
         # En-tetes a redessiner en haut de la page suivante. Remis a None des
         # qu'une section s'acheve : un tableau termine n'a pas a reapparaitre.
         self._repeat = None
+        # Theme de la section en cours, rappele dans l'en-tete des pages de
+        # suite ; et rang de la rangee dans le tableau en cours, pour l'aplat
+        # d'une rangee sur deux.
+        self.theme = None
+        self._rank = None
 
     # -------------------------------------------------------- pagination
 
@@ -491,7 +593,12 @@ class _Cursor:
         self.layout.pageCollection().addPage(page_item)
         self.page = self.layout.pageCollection().pageCount() - 1
         self.pages.append(self.page)
-        _details_header(self.layout, self.page, self.title, first=False,
+        subtitle = self.title
+        if self.theme:
+            # Une page de suite qui commence au milieu d'un tableau ne dit
+            # pas d'elle-meme de quel theme elle releve.
+            subtitle = "{0} · {1}".format(self.title, self.theme)
+        _details_header(self.layout, self.page, subtitle, first=False,
                         heading=self.heading)
         self.y = PAGE2_TOP
         if self._repeat is not None:
@@ -540,17 +647,27 @@ class _Cursor:
         ce qu'elle illustre.
         """
         self._repeat = None
+        self._rank = None
+        theme, color = SECTION_THEMES.get(title, (None, SECTION_RULE_DEFAULT))
+        self.theme = theme
         if page_break:
             self.new_page()
         self.ensure(SECTION_GAP + 6.0 + max(2 * ROW, reserve))
         self.y += SECTION_GAP
         _label(self.layout, title, MARGIN, self.y, 186, 5,
                size=9.5, bold=True, page=self.page)
+        # Filet sous le titre : pleine largeur pour une section qui ouvre sa
+        # page, court pour une sous-section. On distingue ainsi, sans autre
+        # ornement, un theme qui commence d'une rubrique qui le prolonge.
+        _rectangle(self.layout, MARGIN, self.y + 5.0,
+                   186.0 if page_break else 24.0, 0.45,
+                   _rgb(color), self.page)
         self.y += 6.0
 
     def columns(self, spec, headers):
         self.ensure(HEADER_GAP + 2 * ROW)
         self._repeat = (spec, headers)
+        self._rank = 0
         self._draw_columns(spec, headers)
 
     def _draw_columns(self, spec, headers, suite=False):
@@ -580,6 +697,13 @@ class _Cursor:
             lines = max(lines, _wrapped_lines(text, width, bold=bold))
         height = lines * ROW
         self.ensure(height)
+        if self._rank is not None:
+            # Une rangee sur deux, sous les cellules : l'aplat est pose avant
+            # elles, et QGIS dessine dans l'ordre d'ajout.
+            if self._rank % 2:
+                _rectangle(self.layout, MARGIN - 1.0, self.y - 0.3,
+                           188.0, height, ZEBRA, self.page)
+            self._rank += 1
         for (offset, width, right), text in zip(spec, cells):
             if text in (None, ""):
                 continue
@@ -636,6 +760,13 @@ class _Cursor:
         self.y += height
 
 
+def _rgb(color):
+    """'#rrggbb' en 'r,g,b,255', le seul format que createSimple lise sans
+    se tromper - voir results._style_zonages."""
+    tint = QColor(color)
+    return "{0},{1},{2},255".format(tint.red(), tint.green(), tint.blue())
+
+
 def _number(value, decimals=2):
     """Nombre a la francaise, espace insecable en separateur de milliers."""
     if value is None:
@@ -659,8 +790,19 @@ def _has_details(details):
     structures = details.get("structures") or {}
     cover = details.get("land_cover") or {}
     agri = details.get("agriculture") or {}
+    gestion = details.get("gestion_eau") or {}
+    pressions = details.get("pressions") or {}
     return bool(
-        (protected.get("zonages") or [])
+        (cover.get("carhab") or {}).get("nb")
+        or (agri.get("haies") or {}).get("nb")
+        or (agri.get("onf") or {}).get("nb")
+        or details.get("biodiversite")
+        or (details.get("population") or {}).get("population_estimee")
+        is not None
+        or gestion.get("sage") or gestion.get("vigicrues")
+        or any((pressions.get(key) or {}).get("nb")
+               for key in ("basias", "basol", "sis", "irep"))
+        or (protected.get("zonages") or [])
         or (structures.get("roe") or {}).get("nb")
         or (structures.get("hydrometrie") or {}).get("nb")
         or (details.get("steu") or {}).get("nb")
@@ -709,20 +851,40 @@ def _legend_below_height(count):
     return LEGEND_TITLE + lignes * LEGEND_ROW + 4.0
 
 
-def _map_reserve(context, key):
+def _present(layers):
+    """Les couches donnees qui existent et portent au moins une entite."""
+    return [layer for layer in layers
+            if layer is not None and layer.featureCount()]
+
+
+def _legend_count(layers):
+    """Entrees de legende de plusieurs couches, intitule de chacune compris.
+
+    Une couche seule n'a pas d'intitule - le titre de l'encadre le dit deja -
+    mais plusieurs en ont un chacune, sans quoi on ne saurait plus a quelle
+    couche appartient un symbole.
+    """
+    count = sum(_category_count(layer) for layer in layers)
+    return count + (len(layers) if len(layers) > 1 else 0)
+
+
+def _map_reserve(context, key, legend_keys=None):
     """Hauteur a reserver pour la carte d'une section, ou zero s'il n'y en a
     pas : c'est ce que le titre doit demander avec lui."""
     layer = (context or {}).get(key)
     if layer is None or not layer.featureCount():
         return 0.0
     hauteur = SECTION_MAP_HEIGHT + 3.0
-    count = _category_count(layer)
+    legendes = _present([(context or {}).get(k) for k in legend_keys]) \
+        if legend_keys else [layer]
+    count = _legend_count(legendes)
     if count > LEGEND_SIDE_MAX:
         hauteur += _legend_below_height(count)
     return hauteur
 
 
-def _section_map(cursor, context, thematic, legend_title, support=()):
+def _section_map(cursor, context, thematic, legend_title, support=(),
+                 legend_layers=None):
     """Carte du bassin habillee d'une couche thematique, avec sa legende.
 
     Une section d'occupation du sol ou d'agriculture qui n'aligne que des
@@ -742,7 +904,8 @@ def _section_map(cursor, context, thematic, legend_title, support=()):
     from qgis.core import QgsLayoutItemMap
 
     hauteur = SECTION_MAP_HEIGHT
-    entrees = _category_count(thematic)
+    legendes = _present(legend_layers) if legend_layers else [thematic]
+    entrees = _legend_count(legendes)
     # Peu d'entrees : la legende tient a droite de la carte. Beaucoup : elle
     # passe dessous, sur deux colonnes, et la carte prend toute la largeur.
     dessous = entrees > LEGEND_SIDE_MAX
@@ -782,18 +945,31 @@ def _section_map(cursor, context, thematic, legend_title, support=()):
 
     if dessous:
         _layer_legend(
-            cursor.layout, carte, thematic, context["project"], legend_title,
+            cursor.layout, carte, legendes, context["project"], legend_title,
             MARGIN, cursor.y + hauteur + 2.0, 186.0, page=cursor.page,
             columns=LEGEND_COLUMNS,
         )
         cursor.y += hauteur + 2.0 + _legend_below_height(entrees)
     else:
         _layer_legend(
-            cursor.layout, carte, thematic, context["project"], legend_title,
+            cursor.layout, carte, legendes, context["project"], legend_title,
             MARGIN + SECTION_MAP_WIDTH + 4.0, cursor.y,
             SECTION_LEGEND_WIDTH, page=cursor.page,
         )
         cursor.y += hauteur + 3.0
+
+
+def _hide_layer_title(node):
+    """Masque l'intitule de la couche dans la legende, sans la renommer.
+
+    node.setName("") faisait le meme effet a l'ecran, mais un noeud de
+    legende qui porte le nom de sa couche le lui transmet : la couche du
+    projet perdait son nom, et le panneau des couches alignait des lignes
+    vides apres chaque rapport.
+    """
+    from qgis.core import QgsLegendRenderer, QgsLegendStyle
+
+    QgsLegendRenderer.setNodeLegendStyle(node, QgsLegendStyle.Style.Hidden)
 
 
 def _layer_legend(layout, map_item, layer, project, title, x, y, width,
@@ -808,15 +984,16 @@ def _layer_legend(layout, map_item, layer, project, title, x, y, width,
     cree cote Python et confie au modele lui appartient desormais, mais
     Python en garde la seule reference : le ramasse-miettes le detruit sous
     le modele et QGIS tombe, sans message, au moment de l'apercu.
+
+    layer peut etre une liste : la legende reunit alors plusieurs couches,
+    chacune sous son nom.
     """
-    if layer is None or not layer.featureCount():
+    couches = _present(layer if isinstance(layer, (list, tuple))
+                       else [layer])
+    if not couches:
         return None
 
     from qgis.core import QgsLayoutItem, QgsLayoutItemLegend, QgsLegendStyle
-
-    # La couche doit etre connue du projet pour que le noeud se resolve.
-    if project.mapLayer(layer.id()) is None:
-        project.addMapLayer(layer, False)
 
     legend = QgsLayoutItemLegend(layout)
     legend.setLinkedMap(map_item)
@@ -826,13 +1003,26 @@ def _layer_legend(layout, map_item, layer, project, title, x, y, width,
     root = legend.model().rootGroup()
     for child in list(root.children()):
         root.removeChildNode(child)
-    node = root.addLayer(layer)
-    node.setName("")
+    for couche in couches:
+        # La couche doit etre connue du projet pour que le noeud se resolve.
+        if project.mapLayer(couche.id()) is None:
+            project.addMapLayer(couche, False)
+        node = root.addLayer(couche)
+        if len(couches) == 1:
+            _hide_layer_title(node)
 
     legend.setStyleFont(Qgis.LegendComponent.Title,
                         QFont("Arial", int(title_size), 75))
     legend.setStyleFont(Qgis.LegendComponent.SymbolLabel,
                         QFont("Arial", int(label_size)))
+    # Le nom de chaque couche, quand la legende en reunit plusieurs, est
+    # rendu dans le style des groupes - quatorze points par defaut, plus gros
+    # que le titre de l'encadre. Il reprend la taille des intitules, en gras.
+    for component in (Qgis.LegendComponent.Group,
+                      Qgis.LegendComponent.Subgroup):
+        legend.setStyleFont(component, QFont("Arial", int(label_size),
+                                             QFont.Weight.Bold))
+        legend.rstyle(component).setMargin(QgsLegendStyle.Side.Top, 1.0)
     legend.setSymbolWidth(3.6)
     legend.setSymbolHeight(2.2)
     legend.rstyle(Qgis.LegendComponent.Title).setMargin(
@@ -903,7 +1093,7 @@ def _zonage_legend(layout, map_item, zonages, project):
     for child in list(root.children()):
         root.removeChildNode(child)
     node = root.addLayer(zonages)
-    node.setName("")
+    _hide_layer_title(node)
 
     legend.setStyleFont(Qgis.LegendComponent.Title, QFont("Arial", 7, QFont.Weight.Bold))
     legend.setStyleFont(Qgis.LegendComponent.SymbolLabel, QFont("Arial", 6))
@@ -977,17 +1167,18 @@ def _build_details_page(layout, details, title, leftovers=None,
     # apres reste derriere.
     avant, apres = _split_leftovers(leftovers)
 
+    # Une section par theme, dans l'ordre des onglets du panneau : le sol,
+    # l'agriculture, la nature, l'eau, puis ce que l'homme y a construit et y
+    # rejette.
     cursor = _Cursor(layout, index, title)
     _fill_leftovers(cursor, avant)
     _fill_land_cover(cursor, (details or {}).get("land_cover"), context)
     _fill_agriculture(cursor, (details or {}).get("agriculture"), context)
-    _fill_zonages(cursor, details.get("protected"), context)
-    _fill_water(cursor, details)
+    _fill_zonages(cursor, details.get("protected"), context,
+                  details.get("biodiversite"))
+    _fill_water(cursor, details, context)
     _fill_obstacles(cursor, structures.get("roe"), context)
-    _fill_steu(cursor, (details or {}).get("steu"),
-              (details or {}).get("population"), values, context)
-    _fill_prelevements(cursor, (details or {}).get("prelevements"), context)
-    _fill_gauges(cursor, structures.get("hydrometrie"))
+    _fill_pressions(cursor, details, values, context)
     _fill_leftovers(cursor, apres)
 
     return cursor.pages
@@ -1064,11 +1255,14 @@ SOURCES = (
      "Géoplateforme, WFS", "AOC-VITICOLES:aire_parcellaire"),
     ("Zonages environnementaux",
      "ZNIEFF I et II, ZSC, ZPS, arrêté de protection de biotope, réserves "
-     "naturelles nationale et régionale, parc naturel régional, Ramsar",
+     "naturelles nationale et régionale, parc naturel régional, Ramsar, "
+     "conservatoires d'espaces naturels, cœurs de parc national, réserves "
+     "biologiques, réserves de biosphère, arrêtés de protection d'habitat",
      "INPN / Patrinat — Géoplateforme, WFS",
      "patrinat_znieff1, patrinat_znieff2, patrinat_sic, patrinat_zps, "
      "patrinat_apb, patrinat_rnn, patrinat_rnr, patrinat_pnr, "
-     "patrinat_ramsar"),
+     "patrinat_ramsar, patrinat_cen, patrinat_pn, patrinat_rb, "
+     "patrinat_bios, patrinat_aphn"),
     ("Zonages environnementaux", "Zones humides et tourbières BCAE",
      "Géoplateforme, WFS", "TOURBIERES_ZONES-HUMIDES.BCAE:bcae"),
     ("Masses d'eau", "Masse d'eau de surface et bassin versant spécifique",
@@ -1087,6 +1281,32 @@ SOURCES = (
     ("Hydrographie", "Prélèvements d'eau (BNPE)",
      "Hub'Eau — API REST (Office français de la biodiversité)",
      "prelevements/chroniques"),
+    ("Occupation du sol", "Habitats CarHab — physionomie et humidité du sol",
+     "PatriNat / IGN / OFB — Géoplateforme, WFS",
+     "Carhab_habitat:habitats_carhab"),
+    ("Agriculture et paysage", "Haies — dispositif de suivi des bocages",
+     "IGN / OFB — Géoplateforme, WFS", "HAIES.BOCAGES:haie"),
+    ("Agriculture et paysage", "Forêts publiques relevant du régime forestier",
+     "ONF — Géoplateforme, WFS", "ONF.FORETS_PUBLIQUES:ONF_FORETS_PUBLIQUES"),
+    ("Zonages environnementaux",
+     "Mesures compensatoires des atteintes à la biodiversité",
+     "Géoplateforme, WFS", "MESURES_COMPENSATOIRES:emprises_polygones"),
+    ("Zonages environnementaux", "Zones humides d'importance majeure",
+     "Réseau partenarial des données sur les zones humides — WFS 1.1",
+     "ZHIM"),
+    ("Biodiversité", "Observations d'espèces, comptes par grand groupe",
+     "GBIF — API REST", "occurrence/search"),
+    ("Gestion de l'eau", "Périmètres des SAGE",
+     "Sandre (eaufrance) — WFS 1.1", "sa:Sage_FXX"),
+    ("Gestion de l'eau", "Vigicrues — tronçons surveillés et stations",
+     "SCHAPI — Géoplateforme, WFS", "VIGICRUES:troncons, VIGICRUES:stations"),
+    ("Pression anthropique",
+     "Anciens sites industriels (BASIAS) et sites pollués (BASOL)",
+     "Géorisques (BRGM) — WFS", "SSP_ETS_GE_POINT, SSP_INSTR_GE_POINT"),
+    ("Pression anthropique", "Secteurs d'information sur les sols (SIS)",
+     "Géorisques (BRGM) — WFS", "SSP_CLASSIF_SIS_GE"),
+    ("Pression anthropique", "Registre des émissions polluantes (IREP)",
+     "Géorisques — WFS", "ETABLISSEMENTS_POLLUEURS"),
     ("Fond de carte", "Plan IGN v2",
      "IGN — Géoplateforme, WMTS", "GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2"),
 )
@@ -1111,9 +1331,10 @@ def _build_sources_page(layout, title):
     cursor = _Cursor(layout, index, title, heading=SOURCES_TITLE)
     cursor.paragraph(
         "Chaque jeu de données que ce traitement peut interroger, qu'il ait "
-        "été demandé ou non sur ce bassin précis. Les services IGN "
-        "Géoplateforme et Sandre (eaufrance) sont interrogés sans clé "
-        "d'API, en lecture seule.")
+        "été demandé ou non sur ce bassin précis. Tous les services - IGN "
+        "Géoplateforme, Sandre (eaufrance), Hub'Eau, Géorisques, réseau des "
+        "zones humides, GBIF - sont interrogés sans clé d'API, en lecture "
+        "seule.")
     cursor.y += 2.0
     cursor.columns(SOURCES_COLUMNS,
                    ("Thème", "Jeu de données", "Fournisseur / service",
@@ -1207,7 +1428,9 @@ def _fill_land_cover(cursor, cover, context=None):
     corine = cover.get("corine") or {}
     bati = cover.get("bati") or {}
     forest = cover.get("foret") or {}
-    if not (corine.get("classes") or bati or forest.get("formations")):
+    carhab = cover.get("carhab") or {}
+    if not (corine.get("classes") or bati or forest.get("formations")
+            or carhab.get("nb")):
         return
 
     cursor.section("Occupation du sol", _map_reserve(context, "foret"),
@@ -1272,6 +1495,46 @@ def _fill_land_cover(cursor, cover, context=None):
                 _number(item["part_pct"], 1),
             ))
 
+    _fill_carhab(cursor, carhab, context)
+
+
+def _fill_carhab(cursor, carhab, context=None):
+    """Habitats CarHab : humidite du sol, puis physionomie de la vegetation."""
+    if not carhab or not carhab.get("nb"):
+        return
+    cursor.section("Habitats CarHab — humidité du sol",
+                   _map_reserve(context, "carhab"))
+    _section_map(cursor, context, (context or {}).get("carhab"),
+                 "Humidité du sol (CarHab)")
+    cursor.pair("Couverture du bassin par CarHab",
+                _number(carhab.get("couverture_pct"), 1) + " %")
+    if carhab.get("humide_ha") is not None:
+        cursor.pair("Sols humides à aquatiques",
+                    "{0} ha, soit {1} % du bassin".format(
+                        _number(carhab["humide_ha"]),
+                        _number(carhab.get("humide_pct"), 1)))
+    cursor.y += 1.5
+    cursor.columns(AGRI_COLUMNS, ("Humidité du sol", "Surface (ha)",
+                                  "Part (%)"))
+    for item in carhab.get("humidites") or ():
+        cursor.row(AGRI_COLUMNS, (item["libelle"], _number(item["surface_ha"]),
+                                  _number(item["part_pct"], 1)))
+    cursor.y += 1.5
+    cursor.columns(AGRI_COLUMNS, ("Physionomie de la végétation",
+                                  "Surface (ha)", "Part (%)"))
+    for item in carhab.get("physionomies") or ():
+        cursor.row(AGRI_COLUMNS, (item["libelle"], _number(item["surface_ha"]),
+                                  _number(item["part_pct"], 1)))
+    cursor.y += 1.5
+    cursor.paragraph(
+        "CarHab croise images satellitaires, RPG et BD Forêt : sa "
+        "physionomie ne se compare pas terme à terme à Corine ni au RPG. Les "
+        "sols humides réunissent les sols à nappe, détrempés, aquatiques et "
+        "amphibies ; c'est une enveloppe de zones humides potentielles, non "
+        "un inventaire de zones humides délimitées. La couverture nationale "
+        "n'est pas achevée : une part inférieure à 100 % signale un bassin "
+        "en partie hors carte.")
+
 
 def _land_cover_note(cursor, corine, forest):
     """Pourquoi Corine et la BD Foret ne disent pas la meme chose du boise.
@@ -1316,7 +1579,10 @@ def _fill_agriculture(cursor, agri, context=None):
     rpg = agri.get("rpg") or {}
     prairies = agri.get("prairies") or {}
     aoc = agri.get("aoc") or {}
-    if not (rpg.get("nb_parcelles") or prairies.get("nb") or aoc.get("nb")):
+    haies = agri.get("haies") or {}
+    onf = agri.get("onf") or {}
+    if not (rpg.get("nb_parcelles") or prairies.get("nb") or aoc.get("nb")
+            or haies.get("nb") or onf.get("nb")):
         return
 
     cursor.section("Agriculture déclarée (PAC)",
@@ -1426,12 +1692,56 @@ def _fill_agriculture(cursor, agri, context=None):
             "dans les données ouvertes."
         )
 
+    _fill_haies_onf(cursor, haies, onf, context)
 
-def _fill_zonages(cursor, protected, context=None):
-    """Un bloc par zonage present, avec ses sites nommes."""
+
+def _fill_haies_onf(cursor, haies, onf, context=None):
+    """Haies et forets publiques : la trame du paysage rural, et sa propriete."""
+    if not (haies.get("nb") or onf.get("nb")):
+        return
+    cursor.section("Haies et forêts publiques",
+                   _map_reserve(context, "haies" if haies.get("nb") else "onf",
+                                legend_keys=("haies", "onf")))
+    thematic = (context or {}).get("haies") or (context or {}).get("onf")
+    _section_map(cursor, context, thematic, "Haies et forêts publiques",
+                 support=((context or {}).get("onf"),),
+                 legend_layers=[(context or {}).get("haies"),
+                                (context or {}).get("onf")])
+    if haies.get("nb"):
+        cursor.pair("Linéaire de haies dans le bassin",
+                    "{0} km, en {1} tronçon(s)".format(
+                        _number(haies.get("longueur_km"), 1), haies["nb"]))
+        cursor.pair("Densité de haies (m par ha de bassin)",
+                    _number(haies.get("densite_m_ha"), 1))
+        if haies.get("couche_tronquee"):
+            cursor.note("Couche QGIS et carte limitées aux premiers tronçons ; "
+                        "linéaire et densité portent sur toutes les haies.")
+    if onf.get("nb"):
+        cursor.y += 1.5
+        cursor.pair("Forêts publiques relevant du régime forestier",
+                    "{0} ha, soit {1} % du bassin".format(
+                        _number(onf.get("surface_ha")),
+                        _number(onf.get("part_pct"), 1)))
+        if onf.get("domaniale_ha"):
+            cursor.pair("Dont forêts domaniales (ha)",
+                        _number(onf["domaniale_ha"]))
+        cursor.y += 1.0
+        cursor.columns(ONF_COLUMNS, ("Forêt publique", "Statut",
+                                     "Surface (ha)", "Part (%)"))
+        for foret in onf.get("forets") or ():
+            cursor.row(ONF_COLUMNS, (
+                foret["nom"], foret["statut"], _number(foret["surface_ha"]),
+                _number(foret["part_pct"], 1),
+            ))
+
+
+def _fill_zonages(cursor, protected, context=None, biodiversite=None):
+    """Un bloc par zonage present, avec ses sites nommes, puis la
+    biodiversite observee."""
     zonages = [z for z in (protected or {}).get("zonages") or []
                if z.get("nb_sites")]
     if not zonages:
+        _fill_biodiversite(cursor, biodiversite, page_break=True)
         return
 
     cursor.section("Zonages environnementaux",
@@ -1464,16 +1774,56 @@ def _fill_zonages(cursor, protected, context=None):
         _number((protected or {}).get("total_pct"), 1),
     ), bold=True)
 
+    _fill_biodiversite(cursor, biodiversite)
 
-def _fill_water(cursor, details):
-    """Masse d'eau de surface, nappe et hydroecoregions."""
+
+def _fill_biodiversite(cursor, gbif, page_break=False):
+    """Observations et especes du GBIF, par grand groupe."""
+    if not gbif:
+        return
+    cursor.section("Biodiversité observée (GBIF)", page_break=page_break)
+    cursor.pair("Observations publiées dans le bassin",
+                _number(gbif.get("observations"), 0))
+    cursor.pair("Espèces distinctes observées",
+                _number(gbif.get("especes"), 0))
+    cursor.y += 1.5
+    cursor.columns(GBIF_COLUMNS, ("Groupe", "Observations", "Espèces"))
+    for groupe in gbif.get("groupes") or ():
+        cursor.row(GBIF_COLUMNS, (
+            groupe["libelle"], _number(groupe["observations"], 0),
+            _number(groupe["especes"], 0),
+        ))
+    cursor.y += 1.5
+    cursor.paragraph(
+        "Ces comptes mesurent l'effort d'observation autant que la richesse : "
+        "un bassin parcouru par des naturalistes actifs en compte bien plus "
+        "qu'un voisin aussi riche mais peu visité. Les chauves-souris sont "
+        "aussi comptées parmi les mammifères ; les plantes réunissent toutes "
+        "les plantes terrestres, mousses comprises.")
+
+
+def _fill_water(cursor, details, context=None):
+    """Masses d'eau, SAGE, surveillance des crues et stations de mesure."""
     body = details.get("water_body") or {}
     meso = details.get("groundwater") or {}
     her = details.get("hydroecoregion") or {}
-    if not (body or meso or any(her.values())):
+    gestion = details.get("gestion_eau") or {}
+    sage = gestion.get("sage") or {}
+    vigi = gestion.get("vigicrues") or {}
+    hydro = (details.get("structures") or {}).get("hydrometrie")
+    if not (body or meso or any(her.values()) or sage or vigi or hydro):
         return
 
-    cursor.section("Masses d'eau et hydroécorégion")
+    reserve = _map_reserve(context, "vigicrues",
+                           legend_keys=("vigicrues", "vigi_stations"))
+    cursor.section("Masses d'eau et hydroécorégion", reserve,
+                   page_break=bool(reserve))
+    _section_map(cursor, context, (context or {}).get("vigicrues"),
+                 "Surveillance des crues (Vigicrues)",
+                 support=((context or {}).get("vigi_stations"),
+                          (context or {}).get("reseau")),
+                 legend_layers=[(context or {}).get("vigicrues"),
+                                (context or {}).get("vigi_stations")])
     if body:
         cursor.pair("Masse d'eau DCE de surface — code européen",
                     body.get("code_eu") or "—")
@@ -1500,6 +1850,72 @@ def _fill_water(cursor, details):
     if her.get("her2_nom"):
         cursor.pair("Hydroécorégion de niveau 2", "{0} ({1})".format(
             her["her2_nom"], her.get("her2_code") or "—"))
+
+    if sage:
+        cursor.section("Schéma d'aménagement et de gestion des eaux (SAGE)")
+        if not sage.get("nb"):
+            cursor.note("Aucun SAGE ne couvre le bassin.")
+        else:
+            cursor.pair("Part du bassin couverte par un SAGE",
+                        _number(sage.get("part_pct"), 1) + " %")
+            cursor.y += 1.0
+            cursor.columns(SAGE_COLUMNS, ("Code", "SAGE", "État d'avancement",
+                                          "Surface (ha)", "Part (%)"))
+            for item in sage.get("sages") or ():
+                cursor.row(SAGE_COLUMNS, (
+                    item["code"], item["nom"], item["etat"] or "—",
+                    _number(item["surface_ha"]), _number(item["part_pct"], 1),
+                ))
+            if any((item["part_pct"] or 0.0) < 1.0
+                   for item in sage.get("sages") or ()):
+                cursor.note("Une part inférieure à 1 % n'est qu'un liseré de "
+                            "bord, dû à l'écart entre le contour du SAGE et "
+                            "celui du bassin.")
+
+    if vigi:
+        cursor.section("Surveillance des crues (Vigicrues)")
+        if not (vigi.get("nb_troncons") or vigi.get("nb_stations")):
+            # Le dire : un bassin hors vigilance est une information, pas un
+            # oubli du rapport.
+            cursor.note("Aucun tronçon surveillé par Vigicrues dans le "
+                        "bassin : il n'est pas couvert par la vigilance "
+                        "nationale, ce qui ne dit rien de son risque.")
+        else:
+            cursor.pair("Cours d'eau surveillés dans le bassin",
+                        "{0} km, sur {1} tronçon(s) Vigicrues".format(
+                            _number(vigi.get("longueur_km"), 1),
+                            vigi.get("nb_troncons") or 0))
+            cursor.pair("Stations Vigicrues dans le bassin",
+                        vigi.get("nb_stations") or 0)
+            if vigi.get("troncons"):
+                cursor.y += 1.0
+                cursor.columns(VIGI_COLUMNS, ("Code", "Tronçon surveillé",
+                                              "Longueur (km)"))
+                for item in vigi["troncons"]:
+                    cursor.row(VIGI_COLUMNS, (
+                        item["code"], item["nom"],
+                        _number(item["longueur_km"], 1)))
+            if vigi.get("stations"):
+                cursor.y += 1.0
+                cursor.columns(HYDRO_COLUMNS, ("Code", "Station Vigicrues",
+                                               "Cours d'eau"))
+                for item in vigi["stations"]:
+                    cursor.row(HYDRO_COLUMNS, (item["code"], item["nom"],
+                                               item["cours_d_eau"]))
+
+    prelevements = details.get("prelevements") or {}
+    if prelevements.get("nb_aep"):
+        cursor.section("Eau potable")
+        cursor.pair("Ouvrages de prélèvement pour l'eau potable",
+                    prelevements["nb_aep"])
+        if prelevements.get("volume_aep_m3") is not None:
+            cursor.pair("Volume prélevé pour l'eau potable (m³/an)",
+                        _number(prelevements["volume_aep_m3"], 0))
+        cursor.note("Les périmètres de protection des captages ne sont pas "
+                    "diffusés en donnée ouverte : les ouvrages de la BNPE à "
+                    "usage d'eau potable en tiennent lieu.")
+
+    _fill_gauges(cursor, hydro)
 
 
 def _fill_obstacles(cursor, roe, context=None):
@@ -1549,16 +1965,144 @@ def _fill_obstacles(cursor, roe, context=None):
                     .format(reste))
 
 
-def _fill_steu(cursor, steu, population=None, values=None, context=None):
-    """Bilan des STEU du bassin, la population estimee, puis les stations."""
+# Couches de la carte de la pression anthropique, et ordre de leur legende.
+PRESSION_LAYERS = ("sites", "steu", "prelevements", "sis")
+
+
+def _fill_pressions(cursor, details, values=None, context=None):
+    """Pression anthropique : une carte, puis STEU, prelevements et sites.
+
+    Une seule carte pour les trois, plutot qu'une par donnee : ce qui
+    interesse le lecteur, c'est ou se concentrent les rejets, les retraits
+    et les sols pollues les uns par rapport aux autres, et trois cartes
+    separees le lui feraient reconstituer de tete.
+    """
+    steu = details.get("steu") or {}
+    prelevements = details.get("prelevements") or {}
+    pressions = details.get("pressions") or {}
+    population = details.get("population") or {}
+    sites = any((pressions.get(key) or {}).get("nb")
+                for key in ("basias", "basol", "sis", "irep"))
+    if not (steu.get("nb") or prelevements.get("nb") or sites
+            or population.get("population_estimee") is not None
+            or any(pressions.get(key) is not None
+                   for key in ("basias", "basol", "sis", "irep"))):
+        return
+
+    context = context or {}
+    presentes = [key for key in PRESSION_LAYERS
+                 if context.get(key) is not None
+                 and context[key].featureCount()]
+    reserve = (_map_reserve(context, presentes[0],
+                            legend_keys=PRESSION_LAYERS)
+               if presentes else 0.0)
+    cursor.section("Pression anthropique", reserve, page_break=True)
+    if presentes:
+        _section_map(
+            cursor, context, context[presentes[0]], "Pression anthropique",
+            support=tuple(context.get(key) for key in presentes[1:])
+            + (context.get("reseau"),),
+            legend_layers=[context.get(key) for key in PRESSION_LAYERS],
+        )
+    _fill_population(cursor, population, steu, values)
+    _fill_steu(cursor, steu)
+    _fill_prelevements(cursor, prelevements)
+    _fill_sites(cursor, pressions)
+
+
+def _fill_population(cursor, population, steu=None, values=None):
+    """Population estimee du bassin, avec ou sans station d'epuration.
+
+    Elle vivait dans le bloc des STEU, comme point de comparaison a leur
+    capacite : un bassin sans station - releve sur le Sichon, 158 habitants
+    et aucune STEU - la perdait alors avec lui. La comparaison n'apparait que
+    s'il y a une capacite a comparer.
+    """
+    estimee = (population or {}).get("population_estimee")
+    if estimee is None:
+        return
+    cursor.section("Population estimée")
+    cursor.pair(
+        "Population estimée du bassin",
+        "{0} habitant(s), sur {1} commune(s) sur {2} recoupées"
+        .format(_number(estimee, 0),
+                population.get("nb_communes_estimees") or 0,
+                population.get("nb_communes") or 0))
+    surface_km2 = (values or {}).get("surface_km2")
+    if surface_km2:
+        cursor.pair("Densité de population estimée (hab./km²)",
+                    _number(estimee / surface_km2, 1))
+    lin_hydro_km = (values or {}).get("lin_hydro_km")
+    if lin_hydro_km:
+        cursor.pair(
+            "Population estimée par km de cours d'eau (hab./km)",
+            _number(estimee / lin_hydro_km, 1))
+    if (steu or {}).get("capacite_totale_eh") and estimee:
+        cursor.pair(
+            "Capacité STEU cumulée pour cette population (EH/habitant)",
+            _number(steu["capacite_totale_eh"] / estimee, 2))
+    cursor.note("Estimation, non un recensement — méthode en dernière "
+                "page du rapport.")
+
+
+def _fill_sites(cursor, pressions):
+    """Sols pollues et etablissements declarant leurs rejets (Georisques)."""
+    from ..core.pressions import INVENTAIRES
+
+    demandes = [(key, label) for key, _layer, label in INVENTAIRES
+                if (pressions or {}).get(key) is not None]
+    if not demandes:
+        return
+    cursor.section("Sols pollués et rejets industriels (Géorisques)")
+    for key, label in demandes:
+        inventaire = pressions[key]
+        if key == "sis" and inventaire.get("surface_ha"):
+            cursor.pair(label, "{0}, sur {1} ha".format(
+                inventaire["nb"], _number(inventaire["surface_ha"], 2)))
+        else:
+            cursor.pair(label, inventaire["nb"])
+    for key, label in demandes:
+        sites = pressions[key].get("sites") or []
+        if not sites:
+            continue
+        # Le nom de l'inventaire en tete de son tableau, et non dans
+        # l'en-tete de la premiere colonne : vingt-six millimetres ne logent
+        # pas "Secteur d'information sur les sols (SIS)", qui passait sur
+        # deux lignes et recouvrait la premiere rangee.
+        cursor.y += 2.0
+        # Le tableau precedent est clos : ses en-tetes n'ont pas a revenir en
+        # haut de page si l'intitule suivant y passe.
+        cursor._repeat = None
+        cursor.paragraph(label, size=7.0, color=ARDOISE)
+        cursor.columns(SITE_COLUMNS, (
+            "Code", "Établissement ou site",
+            "Code d'activité" if key == "irep" else "État ou statut",
+            "Commune"))
+        for site in sites:
+            cursor.row(SITE_COLUMNS, (
+                site["code"] or "—", site["nom"] or "—",
+                site["etat"] or "—", site["commune"] or "—",
+            ))
+        reste = pressions[key]["nb"] - len(sites)
+        if reste > 0:
+            cursor.note("… et {0} site(s) au-delà du plafond de relevé."
+                        .format(reste))
+    cursor.y += 1.5
+    cursor.paragraph(
+        "BASIAS est un inventaire historique : il dit qu'une activité "
+        "potentiellement polluante a existé, non qu'il y a pollution. BASOL "
+        "et les secteurs d'information sur les sols portent sur des "
+        "pollutions avérées ou fortement suspectées. Le registre IREP "
+        "recense les établissements tenus de déclarer leurs rejets ; son "
+        "code d'activité est le code APE de l'établissement.")
+
+
+def _fill_steu(cursor, steu):
+    """Bilan des STEU du bassin, puis les stations une a une."""
     if not steu or not steu.get("nb"):
         return
 
-    cursor.section("Stations de traitement des eaux usées (STEU)",
-                   _map_reserve(context, "steu"), page_break=True)
-    _section_map(cursor, context, (context or {}).get("steu"),
-                 "Stations de traitement des eaux usées",
-                 support=((context or {}).get("reseau"),))
+    cursor.section("Stations de traitement des eaux usées (STEU)")
     cursor.pair("Stations recensées dans le bassin", steu["nb"])
     cursor.pair("Dont en service", steu.get("nb_en_service"))
     if steu.get("capacite_totale_eh") is not None:
@@ -1575,35 +2119,6 @@ def _fill_steu(cursor, steu, population=None, values=None, context=None):
                 steu.get("nb_zone_sensible"))
     cursor.pair("Dont avec autosurveillance en place",
                 steu.get("nb_avec_autosurv"))
-
-    # La population n'est montree qu'ici, comme point de comparaison a la
-    # capacite des stations : ce n'est pas un recensement, et la faire
-    # figurer au recap general du bassin lui preterait une exactitude
-    # qu'elle n'a pas. Voir la methode en derniere page du rapport.
-    estimee = (population or {}).get("population_estimee")
-    if estimee is not None:
-        cursor.y += 1.5
-        cursor.pair(
-            "Population estimée du bassin",
-            "{0} habitant(s), sur {1} commune(s) sur {2} recoupées"
-            .format(_number(estimee, 0),
-                    population.get("nb_communes_estimees") or 0,
-                    population.get("nb_communes") or 0))
-        surface_km2 = (values or {}).get("surface_km2")
-        if surface_km2:
-            cursor.pair("Densité de population estimée (hab./km²)",
-                        _number(estimee / surface_km2, 1))
-        lin_hydro_km = (values or {}).get("lin_hydro_km")
-        if lin_hydro_km:
-            cursor.pair(
-                "Population estimée par km de cours d'eau (hab./km)",
-                _number(estimee / lin_hydro_km, 1))
-        if steu.get("capacite_totale_eh"):
-            cursor.pair(
-                "Capacité STEU cumulée pour cette population (EH/habitant)",
-                _number(steu["capacite_totale_eh"] / estimee, 2))
-        cursor.note("Estimation, non un recensement — méthode en dernière "
-                    "page du rapport.")
 
     stations = steu.get("stations") or []
     if not stations:
@@ -1628,16 +2143,12 @@ def _fill_steu(cursor, steu, population=None, values=None, context=None):
                     .format(reste))
 
 
-def _fill_prelevements(cursor, prelevements, context=None):
+def _fill_prelevements(cursor, prelevements):
     """Bilan des prelevements d'eau, par usage, puis les ouvrages un a un."""
     if not prelevements or not prelevements.get("nb"):
         return
 
-    cursor.section("Prélèvements d'eau",
-                   _map_reserve(context, "prelevements"), page_break=True)
-    _section_map(cursor, context, (context or {}).get("prelevements"),
-                 "Prélèvements d'eau",
-                 support=((context or {}).get("reseau"),))
+    cursor.section("Prélèvements d'eau")
     cursor.pair("Ouvrages recensés dans le bassin", prelevements["nb"])
     if prelevements.get("volume_total_m3") is not None:
         cursor.pair("Volume annuel cumulé (m³)",

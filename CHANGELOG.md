@@ -3,6 +3,46 @@
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le
 plugin la [gestion sémantique de version](https://semver.org/lang/fr/).
 
+## [Non publié]
+
+### Ajouté
+
+- **Onglet Eau : SAGE et Vigicrues.** Schémas d'aménagement et de gestion
+  des eaux (Sandre), tronçons et stations de vigilance crues.
+- **Pression anthropique**, dans l'onglet Eau : anciens sites industriels
+  (BASIAS), sites et sols pollués (BASOL), secteurs d'information sur les
+  sols (SIS) et établissements déclarant des rejets (IREP), lus sur les
+  services de Géorisques.
+- **Onglet Agricole : haies et forêts publiques.** Les chiffres portent sur
+  toutes les haies ; la couche chargée dans QGIS est plafonnée à
+  200 000 objets, avec un avertissement.
+- **Onglet Nature** (ancien onglet Zonages) : conservatoires d'espaces
+  naturels, mesures compensatoires, autres protections réunies sous une case
+  (cœur de parc national, réserve biologique, réserve de biosphère, arrêté
+  de protection d'habitat naturel), zones humides d'importance majeure et
+  bloc Biodiversité (nombre d'observations GBIF).
+- **Sol : habitats CarHab** (part des sols humides, physionomies), décoché
+  par défaut : la couverture nationale est encore incomplète.
+- **Classeur Excel** : onglet « Synthèse » en tuiles, onglet « Indicateurs »
+  à plat (filtre, volets figés) et un onglet par thème.
+
+### Modifié
+
+- **Rapport PDF** : détail par thème (Sol, Agriculture, Nature et
+  biodiversité, Eau, ROE, Pression anthropique, Sources), filet de couleur
+  sous les titres, une ligne sur deux grisée, thème rappelé sur les pages de
+  suite.
+- **Fiches Natura 2000 (ZSC, ZPS)** : le lien pointe vers le portail
+  européen BISE, les fiches de l'INPN étant inaccessibles depuis l'attaque
+  informatique du MNHN. Le classeur le signale sous le total.
+
+### Corrigé
+
+- **Milliers dans le classeur** : format `#,##0` ; l'ancien `# ##0`
+  affichait « 66512 100 ».
+- **Légendes des cartes du rapport** : masquer un titre de légende ne
+  renomme plus la couche du projet.
+
 ## [1.3.3] - 2026-10-17
 
 ### Corrigé
