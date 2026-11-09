@@ -138,6 +138,33 @@ plugin la [gestion sémantique de version](https://semver.org/lang/fr/).
 - Le chevelu disparaissait souvent derrière le relief dans la vue 3D et dans
   le bloc-diagramme du rapport, à cause du tri en profondeur de matplotlib.
 
+## [1.3.1] - 2026-09-11
+
+### Ajouté
+
+- **Contrôle de stabilité de l'exutoire en mode petit bassin versant.** Sans
+  réseau BD TOPO amont pour confirmer le bassin, rien ne signalait un
+  exutoire tombé près d'une ligne de partage des eaux : un décalage de
+  quelques mètres peut faire basculer le résultat vers un bassin entièrement
+  différent. Le calcul rejoue désormais le recalage complet pour huit clics
+  voisins, à un pas de maille autour du point d'origine, et compare chaque
+  candidat au bassin retenu par intersection sur union. Vérifié sur un cas
+  réel : un clic à la mare de la ferme donnait 2,95 ha, un déplacement de
+  7 m vers le vallon voisin 49,74 ha, sans aucun recouvrement — ce cas est
+  désormais refusé plutôt que rendu sans avertissement.
+
+## [1.3.0] - 2026-09-11
+
+### Ajouté
+
+- **Mode petit bassin versant.** Quand aucun cours d'eau BD TOPO n'est
+  accessible autour du point — fréquent en tête de bassin versant, sur les
+  fossés et les ruisseaux intermittents —, le calcul refusait le point avant
+  même de télécharger le MNT. Il propose désormais un mode de secours :
+  recaler l'exutoire sur le seul modèle numérique de terrain, dans une
+  emprise fixe autour du point, sans réseau de référence et sans contrôle de
+  cohérence en aval.
+
 ## [1.2.1] - 2026-09-09
 
 ### Modifié

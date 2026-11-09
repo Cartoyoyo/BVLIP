@@ -663,6 +663,11 @@ Le détail complet, avec les mesures qui ont motivé chaque correction, est dans
 |---------|-------|
 | **Non publié** | Onglet Eau : SAGE et Vigicrues — pression anthropique (BASIAS, BASOL, SIS, IREP) — haies et forêts publiques — onglet Nature (ex-Zonages) : CEN, mesures compensatoires, autres protections, zones humides d'importance majeure, biodiversité GBIF — habitats CarHab — rapport et classeur rangés par thème, synthèse en tuiles — fiches Natura 2000 vers BISE |
 | **1.3.3** | Codes cultures PAC de nouveau nommés — onglet Excel « Agriculture (PAC) » — avertissement d'usage en pied de page — « À propos » refait — compatibilité QGIS 4 (Qt6) |
+| **1.3.2** | Vue 3D en WebGL, zoom à la molette, habillage orthophoto — export HTML interactif autonome — export .glb plus fidèle — cartes du rapport qui restaient blanches hors Lambert 93 — chevelu qui disparaissait derrière le relief |
+| **1.3.1** | Mode petit bassin versant : contrôle de stabilité de l'exutoire (huit clics voisins, refus si le bassin bascule près d'une ligne de partage des eaux) |
+| **1.3.0** | Mode petit bassin versant : recalage sur le MNT seul quand aucun cours d'eau BD TOPO n'est accessible autour du point |
+| **1.2.1** | Palette des zonages environnementaux recolorisée en teintes franches et saturées |
+| **1.2.0** | Bouton « Fond de carte » (OpenTopoMap) — population estimée en page 1 — zonages interrogés en parallèle — zones vulnérable et sensible retirées (service Sandre trop instable) |
 | **1.1.1** | Pagination corrigée sur les pages de détail (total de pages faux depuis l'ajout de la page Sources) — référence de couche qui débordait de la page — écran « À propos » à jour |
 | **1.1.0** | Stations de traitement des eaux usées (STEU) avec normes de rejet calculées — population du bassin estimée par bâti et communes — prélèvements d'eau (Hub'Eau / BNPE) — page « Sources et méthode » en fin de rapport — vue 3D : drapé de couches, export GLB, réseau hydrographique par ordre de Strahler |
 | **1.0.1** | L'interface retrouve ses accents dans les cinq langues |
