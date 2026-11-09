@@ -14,6 +14,9 @@ jobs:
     # Fige plutot que ubuntu-latest, qui bascule sur Ubuntu 26 le 19/10/2026 :
     # une publication ne doit pas changer d'environnement sans qu'on le decide.
     runs-on: ubuntu-24.04
+    # Ecriture necessaire pour creer la release GitHub en fin de job.
+    permissions:
+      contents: write
     steps:
       # v7 : actions sous Node.js 24 (Node 20 est deprecie sur les runners).
       - uses: actions/checkout@v7
@@ -59,3 +62,23 @@ jobs:
           OSGEO_USER: ${{ secrets.OSGEO_USER }}
           OSGEO_PASSWORD: ${{ secrets.OSGEO_PASSWORD }}
         run: python tools/publish.py --zip "${{ steps.build.outputs.zip }}"
+
+      # Apres l'envoi seulement : la release ne devient « Latest » que si la
+      # version est bien partie sur plugins.qgis.org. Notes = section du
+      # CHANGELOG, a defaut celles generees par GitHub ; le ZIP est joint.
+      - name: Creer la release GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ZIP: ${{ steps.build.outputs.zip }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          python tools/release_notes.py "$version" --out /tmp/notes.md
+          titre=$(git log -1 --format=%s)
+          case "$titre" in "$version - "*) ;; *) titre="$version" ;; esac
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "$ZIP" --clobber
+          elif [ -s /tmp/notes.md ]; then
+            gh release create "$GITHUB_REF_NAME" "$ZIP" --verify-tag --latest               --title "$titre" --notes-file /tmp/notes.md
+          else
+            gh release create "$GITHUB_REF_NAME" "$ZIP" --verify-tag --latest               --title "$titre" --generate-notes
+          fi
