@@ -7,7 +7,7 @@
 **Cliquez un point sur un cours d'eau : le bassin versant qui l'alimente est délimité, caractérisé, cartographié et mis en rapport — sans préparer la moindre donnée.**
 
 [![QGIS](https://img.shields.io/badge/QGIS-3.40%2B-green?logo=qgis&logoColor=white)](https://qgis.org)
-[![Version](https://img.shields.io/badge/version-1.3.3-blue)](metadata.txt)
+[![Version](https://img.shields.io/badge/version-1.4.0-blue)](metadata.txt)
 [![License](https://img.shields.io/badge/license-GPL%20v3-orange)](LICENSE)
 [![Données](https://img.shields.io/badge/données-IGN%20%7C%20Sandre%20%7C%20Géorisques%20%7C%20GBIF-informational)](https://geoservices.ign.fr)
 [![Interface](https://img.shields.io/badge/interface-FR%20%7C%20EN%20%7C%20ES%20%7C%20PT%20%7C%20DE-lightgrey)](i18n/__init__.py)
@@ -661,7 +661,7 @@ Le détail complet, avec les mesures qui ont motivé chaque correction, est dans
 
 | Version | Notes |
 |---------|-------|
-| **Non publié** | Onglet Eau : SAGE et Vigicrues — pression anthropique (BASIAS, BASOL, SIS, IREP) — haies et forêts publiques — onglet Nature (ex-Zonages) : CEN, mesures compensatoires, autres protections, zones humides d'importance majeure, biodiversité GBIF — habitats CarHab — rapport et classeur rangés par thème, synthèse en tuiles — fiches Natura 2000 vers BISE |
+| **1.4.0** | Onglet Eau : SAGE et Vigicrues — pression anthropique (BASIAS, BASOL, SIS, IREP) — haies et forêts publiques — onglet Nature (ex-Zonages) : CEN, mesures compensatoires, autres protections, zones humides d'importance majeure, biodiversité GBIF — habitats CarHab — rapport et classeur rangés par thème, synthèse en tuiles — fiches Natura 2000 vers BISE |
 | **1.3.3** | Codes cultures PAC de nouveau nommés — onglet Excel « Agriculture (PAC) » — avertissement d'usage en pied de page — « À propos » refait — compatibilité QGIS 4 (Qt6) |
 | **1.3.2** | Vue 3D en WebGL, zoom à la molette, habillage orthophoto — export HTML interactif autonome — export .glb plus fidèle — cartes du rapport qui restaient blanches hors Lambert 93 — chevelu qui disparaissait derrière le relief |
 | **1.3.1** | Mode petit bassin versant : contrôle de stabilité de l'exutoire (huit clics voisins, refus si le bassin bascule près d'une ligne de partage des eaux) |

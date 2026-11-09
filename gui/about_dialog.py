@@ -27,7 +27,7 @@ ABOUT_DIR = os.path.join(PLUGIN_DIR, "icons", "about")
 GITHUB_URL = "https://github.com/Cartoyoyo/BVLIP"
 LINKEDIN_URL = "https://www.linkedin.com/in/ylaloux/"
 # Assez large pour tenir les trois badges sur une ligne.
-DIALOG_WIDTH = 500
+DIALOG_WIDTH = 560
 
 _META_FIELDS = ("name", "version", "author", "repository")
 
