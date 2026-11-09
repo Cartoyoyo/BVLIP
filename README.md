@@ -9,7 +9,7 @@
 [![QGIS](https://img.shields.io/badge/QGIS-3.40%2B-green?logo=qgis&logoColor=white)](https://qgis.org)
 [![Version](https://img.shields.io/badge/version-1.3.3-blue)](metadata.txt)
 [![License](https://img.shields.io/badge/license-GPL%20v3-orange)](LICENSE)
-[![Données](https://img.shields.io/badge/données-IGN%20%7C%20Sandre-informational)](https://geoservices.ign.fr)
+[![Données](https://img.shields.io/badge/données-IGN%20%7C%20Sandre%20%7C%20Géorisques%20%7C%20GBIF-informational)](https://geoservices.ign.fr)
 [![Interface](https://img.shields.io/badge/interface-FR%20%7C%20EN%20%7C%20ES%20%7C%20PT%20%7C%20DE-lightgrey)](i18n/__init__.py)
 
 </div>
